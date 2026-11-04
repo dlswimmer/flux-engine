@@ -88,5 +88,7 @@ export function mountUI(root: HTMLElement) {
     requestAnimationFrame(frame);
   };
   render(); // paint immediately; rAF doesn't fire while the tab is hidden
+  // Dev only: lets tooling drive a frame while the tab is hidden (rAF is paused then).
+  if (import.meta.env.DEV) (window as unknown as { __render: () => void }).__render = render;
   requestAnimationFrame(frame);
 }

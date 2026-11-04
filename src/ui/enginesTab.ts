@@ -1,7 +1,7 @@
 import { format, formatInt, formatMult, formatTime } from "../core/format";
 import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
-import { hasEngineAutobuyers, hasResetAutobuyers, isBuyingPaused } from "../game/automation";
+import { hasEngineAutobuyers, hasResetAutobuyers } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
 import {
   ENGINE_NAMES,
@@ -15,10 +15,10 @@ import {
   engineCost,
   engineGrowthPercent,
   engineMult,
-  fluxPerSecond,
   isEngineUnlocked,
   maxAll,
   toNextMilestone,
+  unlockedEngines,
 } from "../game/engines";
 import {
   HEAT_MAX,
@@ -68,9 +68,24 @@ function trackFluxGrowth() {
 /** Seconds until Flux reaches `cost`, or Infinity if there's no estimate yet. */
 function fluxEta(cost: Decimal): number {
   if (state.flux.gte(cost)) return 0;
+  // No estimate until there's a second of growth to go on: "remaining / current rate"
+  // right after a reset gives nonsense like 300 million days.
   if (fluxLogSlope > 0) return (cost.log10().toNumber() - state.flux.max(1).log10().toNumber()) / fluxLogSlope;
-  const rate = fluxPerSecond();
-  return rate.gt(0) ? cost.sub(state.flux).div(rate).toNumber() : Infinity;
+  return Infinity;
+}
+
+const formatEta = (eta: number) =>
+  !Number.isFinite(eta) ? "" : eta < 60 ? `~${Math.ceil(eta)}s` : eta < 3600 ? `~${formatTime(eta)}` : "~1h+";
+
+// The most Engine rows unlocked at any point in this Collapse (UI only; rebuilt on load).
+let shownEngineRows = 0;
+let shownForCollapse = -1;
+function updateShownEngineRows() {
+  if (state.collapse.count !== shownForCollapse) {
+    shownForCollapse = state.collapse.count;
+    shownEngineRows = 0;
+  }
+  shownEngineRows = Math.max(shownEngineRows, unlockedEngines());
 }
 
 function engineRow(tier: number): View {
@@ -97,9 +112,24 @@ function engineRow(tier: number): View {
   return {
     root,
     update() {
+      // Rows stay once unlocked this Collapse, even while a reset has re-locked them, so
+      // auto-Overdrives don't make the whole list jump up and down every few seconds.
+      setVisible(root, tier < shownEngineRows);
+      if (tier >= shownEngineRows) return;
       const unlocked = isEngineUnlocked(tier);
-      setVisible(root, unlocked);
-      if (!unlocked) return;
+      setClass(root, "locked", !unlocked);
+      if (!unlocked) {
+        setText(mult, "");
+        setText(amount, "locked");
+        setText(growth, `needs Overdrive ${tier - 3}`);
+        setVisible(badge, false);
+        milestone.style.width = "0%";
+        setText(buyOne, "Locked");
+        setDisabled(buyOne, true);
+        setClass(buyMax, "dim", true);
+        setVisible(buttons, !(hasEngineAutobuyers() && state.automation.engines[tier]));
+        return;
+      }
       const engine = state.engines[tier];
       const automated = hasEngineAutobuyers() && state.automation.engines[tier];
       setText(mult, formatMult(engineMult(tier)));
@@ -112,7 +142,7 @@ function engineRow(tier: number): View {
         const eta = fluxEta(cost);
         setText(
           growth,
-          isBuyingPaused() ? "paused" : state.flux.gte(cost) ? "buying…" : !Number.isFinite(eta) ? "" : eta < 60 ? `~${Math.ceil(eta)}s` : `~${formatTime(eta)}`,
+          state.flux.gte(cost) ? "buying…" : formatEta(eta),
         );
         // Flux grows exponentially, so progress is measured in orders of magnitude: a linear
         // bar would sit near empty and then jump to full at the very end.
@@ -322,14 +352,16 @@ export function enginesTab(): View {
     root,
     update() {
       trackFluxGrowth();
+      updateShownEngineRows();
       // Buy mode only affects the per-Engine buttons, which automated rows hide.
       const anyManualEngine = Array.from({ length: ENGINE_COUNT }, (_, tier) => tier).some(
-        (tier) => isEngineUnlocked(tier) && !(hasEngineAutobuyers() && state.automation.engines[tier]),
+        (tier) => tier < shownEngineRows && !(hasEngineAutobuyers() && state.automation.engines[tier]),
       );
       setVisible(buyMode, anyManualEngine);
       setText(buyMode, (state.ui.buyMode === "next" ? "Buy mode: Until ×2" : "Buy mode: 1") + keyHint("B"));
       for (const view of views) view.update();
-      setVisible(lattice.root, state.overdrives >= 4 || state.lattices > 0);
+      // Sticky like the Engine rows: once Engine VIII has shown up this Collapse, keep the panel.
+      setVisible(lattice.root, shownEngineRows >= ENGINE_COUNT || state.lattices > 0);
     },
   };
 }

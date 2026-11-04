@@ -2,7 +2,7 @@ import { format, formatCount, formatInt } from "../core/format";
 import { state } from "../core/state";
 import { HORIZON, canCollapse, doCollapse, isCollapseUnlocked, shardGain } from "../game/collapse";
 import { fluxPerSecond } from "../game/engines";
-import { h, setText, setVisible, type View } from "./dom";
+import { h, setClass, setText, setVisible, type View } from "./dom";
 
 export function headerView(): View {
   const flux = h("span", { class: "big-number" });
@@ -39,14 +39,19 @@ export function headerView(): View {
       setText(flux, format(state.flux, 2, 1));
       setText(rate, `+${format(fluxPerSecond(), 2, 1)} / sec`);
 
-      const pct = Math.min(100, Math.max(0, (state.flux.max(1).log10().toNumber() / horizonLog) * 100));
+      // Peak, not current: spending or an Overdrive shouldn't make the bar fall back.
+      const pct = Math.min(100, Math.max(0, (state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog) * 100));
       fill.style.width = `${pct}%`;
       setText(progressLabel, pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`);
 
       setVisible(shards, isCollapseUnlocked());
       setText(shards, `${formatInt(state.collapse.shards)} Shards`);
 
-      setVisible(collapseBtn, canCollapse());
+      // Once you've Collapsed before, the button keeps its slot (hidden when not ready) so the
+      // page doesn't jump each time it appears. On phones it takes the Shards spot instead.
+      setVisible(collapseBtn, isCollapseUnlocked());
+      setClass(collapseBtn, "slot-hidden", !canCollapse());
+      setClass(root, "ready", canCollapse());
       setText(collapseBtn, `Collapse for ${formatCount(shardGain(), "Shard")}`);
     },
   };

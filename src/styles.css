@@ -102,6 +102,7 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
   animation: pulse 1.6s ease-in-out infinite;
 }
 .collapse-btn:disabled { animation: none; }
+.slot-hidden { visibility: hidden; }
 .collapse-btn.wide { display: block; width: 100%; padding: 12px; font-size: 16px; margin: 12px 0 20px; }
 @keyframes pulse {
   50% { box-shadow: 0 0 16px 2px var(--shard-dim); }
@@ -132,7 +133,8 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
 .engine-name strong { display: block; }
 .mult { font: 12px var(--mono); color: var(--text-dim); }
 .engine-amount { font-family: var(--mono); }
-.engine-row.pending .amount { color: var(--text-dim); font-size: 12px; }
+.engine-row.pending .amount, .engine-row.locked .amount { color: var(--text-dim); font-size: 12px; }
+.engine-row.locked strong { color: var(--text-dim); }
 .growth { display: block; font-size: 11px; color: var(--text-dim); }
 .milestone { height: 6px; background: var(--bg-sunken); border-radius: 3px; overflow: hidden; }
 .milestone-fill { height: 100%; background: var(--flux-dim); }
@@ -170,7 +172,7 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
 .heat-throttle-marker { background: var(--danger); opacity: 0.7; }
 .heat-auto-marker { background: var(--text); opacity: 0.6; }
 .heat-label { position: absolute; inset: 0; text-align: center; font: 600 12px/20px var(--mono); text-shadow: 0 0 3px #000; }
-.heat-status { margin: 8px 0; color: var(--text-dim); min-height: 20px; }
+.heat-status { margin: 8px 0; color: var(--text-dim); min-height: 2.9em; } /* two lines, so wrapping text doesn't move the panel */
 .heat-status.hot { color: var(--danger); }
 .heat-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vent-btn { background: var(--shard); font-family: var(--mono); font-size: 12px; }
@@ -377,7 +379,10 @@ textarea {
   .header .progress { grid-column: 1 / -1; height: 14px; margin: 6px 0 0; max-width: none; }
   .progress-label { font-size: 10px; line-height: 12px; text-align: center; }
   .shard-count { grid-column: 2; grid-row: 1 / span 2; margin: 0; text-align: right; }
-  .collapse-btn { grid-column: 1 / -1; margin-top: 8px; }
+  /* Ready to Collapse: the button takes the Shards spot, so the header never changes height */
+  .collapse-btn { grid-column: 2; grid-row: 1 / span 2; margin: 0; min-height: 40px; padding: 4px 10px; font-size: 13px; max-width: 150px; }
+  .collapse-btn.slot-hidden { display: none; }
+  .header.ready .shard-count { display: none; }
   .speed-badge { position: static; grid-column: 2; min-height: 0; justify-self: end; }
 
   /* Bottom dock: action bar over the tab bar */
@@ -415,9 +420,14 @@ textarea {
   /* Engine rows: name + amount, thin milestone bar, then full-width buttons */
   .engine-list { gap: 6px; }
   .engine-row { grid-template-columns: 1fr auto; gap: 6px 10px; padding: 8px 10px; }
-  .engine-name strong { display: inline; margin-right: 6px; }
-  .engine-amount { text-align: right; }
-  .growth { display: inline; margin-left: 6px; }
+  /* Every row is exactly two lines (name / multiplier, amount / rate), whatever the text,
+     so rows never change height as numbers grow or an Engine waits for its first buy. */
+  .engine-name { display: flex; flex-wrap: wrap; align-items: center; column-gap: 6px; min-width: 0; }
+  .engine-name, .engine-amount { line-height: 20px; }
+  .engine-name .mult { flex-basis: 100%; order: 3; height: 18px; line-height: 18px; }
+  .engine-amount { text-align: right; white-space: nowrap; }
+  .engine-amount .amount { display: block; height: 20px; }
+  .growth { display: block; margin-left: 0; height: 18px; line-height: 18px; }
   .milestone { grid-column: 1 / -1; height: 4px; }
   .engine-buttons { grid-column: 1 / -1; }
   .engine-buttons button:first-child { flex: 1; min-width: 0; }
@@ -429,7 +439,7 @@ textarea {
   .heat-actions { gap: 8px; }
   .vent-btn { flex: 1; }
   .reset-panels { grid-template-columns: 1fr; }
-  .reset-panel p { min-height: 0; }
+  .reset-panel p { min-height: 2.9em; }
   .upgrade-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
   .upgrade { min-height: 120px; padding: 10px; }
 
