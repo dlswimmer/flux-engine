@@ -150,8 +150,25 @@ export function capAtHorizon() {
 export const canCollapse = () => state.collapse.peakFlux.gte(HORIZON);
 export const isCollapseUnlocked = () => state.collapse.count > 0 || canCollapse();
 
+/**
+ * What a Collapse pays: the best Shard gain reached at any moment this Collapse. Like peak
+ * Flux, so nothing that happens later (a Surge ending, spending, a reset) can shrink it:
+ * a player saw "Collapse for 9 Shards" drop to 5 when a Surge ran out.
+ */
 export function shardGain(): Decimal {
   if (!canCollapse()) return D(0);
+  return currentShardGain().max(state.collapse.peakShards);
+}
+
+/** Called every tick: remember the best Shard gain this Collapse. */
+export function trackPeakShardGain() {
+  if (!canCollapse()) return;
+  const now = currentShardGain();
+  if (now.gt(state.collapse.peakShards)) state.collapse.peakShards = now;
+}
+
+/** Shard gain if you Collapsed right now. */
+function currentShardGain(): Decimal {
   let gain = isBreached()
     ? Decimal.pow(10, state.collapse.peakFlux.log10().div(HORIZON_LOG).sub(0.75))
     : D(1);

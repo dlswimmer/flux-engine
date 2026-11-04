@@ -43,6 +43,8 @@ export interface GameState {
     bestTime: number;
     /** Most Flux reached in this Collapse. Collapsing and Shard gain use this, so spending never costs you a Collapse. */
     peakFlux: Decimal;
+    /** Best Shard gain seen this Collapse: a Surge's bonus is locked in when it ends. */
+    peakShards: Decimal;
     upgrades: string[];
     /** Most recent last, at most COLLAPSE_HISTORY. */
     history: CollapseRecord[];
@@ -110,7 +112,7 @@ export function defaultState(): GameState {
     overdrives: 0,
     lattices: 0,
 
-    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), upgrades: [], history: [], overcharge: 0 },
+    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), peakShards: D(0), upgrades: [], history: [], overcharge: 0 },
 
     rift: {
       essence: D(0),

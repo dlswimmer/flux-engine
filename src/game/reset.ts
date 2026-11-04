@@ -36,6 +36,7 @@ export function resetForCollapse() {
   state.overdrives = minOverdrives();
   state.collapse.time = 0;
   state.collapse.peakFlux = D(0);
+  state.collapse.peakShards = D(0);
   // Heat carries over: after Breach the best runs last ~2s, and Heat (8s to build) never mattered.
 }
 

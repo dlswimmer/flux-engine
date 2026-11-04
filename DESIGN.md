@@ -64,7 +64,7 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 ### The twist: Heat + branching prestige
 **Heat (built, unlocks at Collapse 3).**
 - Heat rises toward 100% while Engines run. It fills faster the more tiers are active. It **carries over between Collapses** and only a Rift clears it: after Breach the best runs last ~2s, and with a per-Collapse reset Heat never built at all.
-- **After Breach, a Surge also multiplies Shard gain by √(Surge)** (Backdraft's bonus too). Engine multipliers barely move Shards past the Horizon (a ×2 is ~×1.06), so without this Heat, Thermostat and Heat Exchanger were worth 0% of Shard income after Breach; now Thermostat is ~32% and Exchanger ~13%.
+- **After Breach, a Surge also multiplies Shard gain by √(Surge)** (Backdraft's bonus too). The Collapse pays the **best** Shard gain reached this run, so a Surge locks its bonus in (a Surge ending used to drop "Collapse for 9 Shards" to 5). Engine multipliers barely move Shards past the Horizon (a ×2 is ~×1.06), so without this Heat, Thermostat and Heat Exchanger were worth 0% of Shard income after Breach; now Thermostat is ~32% and Exchanger ~13%.
 - Above 60%, Flux output drops gently, down to ×0.8 at 100%. This only hits Engine I, so idle play stays fully viable.
 - **Vent** (V) resets Heat and starts a **Surge**: all Engines ×(1 + 3·(Heat/100)²) for 15 seconds, so ×1.75 at 50%, ×2.7 at 75%, ×4 at 100%.
 - You can't vent during a Surge. Earlier tuning let tiny vents chain into a permanent boost, which made mashing V optimal. The quadratic curve keeps small vents weak for the same reason.
