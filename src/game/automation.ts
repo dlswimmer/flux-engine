@@ -32,11 +32,12 @@ export const nextAutobuyInterval = () =>
   Math.max(MIN_INTERVAL, autobuyInterval() * SPEEDUP_PER_COLLAPSE);
 
 /**
- * Once a Collapse is ready, auto Overdrive/Lattice stand down: they'd reset a run you may
- * still be growing (after Breach, more Flux means more Shards). Buying carries on; it can't
- * cost you the Collapse, which is based on peak Flux.
+ * Auto Overdrive/Lattice wait once you can Collapse (a setting, on by default). After Breach
+ * runs hit the Horizon in ~2s, and a reset after that restarts the run from 10 Flux: with it
+ * off, Shard income at Overcharge 15 fell from ~650/min to ~230/min. It's a visible switch
+ * because a silent pause looked like the autobuyers had stopped working.
  */
-export const areResetsPaused = () => canCollapse();
+export const areResetsPaused = () => state.automation.pauseResetsAtHorizon && canCollapse();
 
 let timer = 0;
 

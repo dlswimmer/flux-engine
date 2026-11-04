@@ -221,13 +221,6 @@ h3 .auto-badge { margin-left: 8px; }
 /* Automation tab */
 .automation-tab { display: flex; flex-direction: column; gap: 12px; }
 .auto-speed-line { margin: 0; color: var(--text-dim); }
-.auto-paused {
-  margin: 0;
-  padding: 8px 12px;
-  border: 1px solid var(--shard-dim);
-  border-radius: var(--radius);
-  color: var(--shard);
-}
 .auto-locked { margin: 0; color: var(--text-dim); }
 .auto-group .button-row { margin-bottom: 8px; }
 .auto-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }

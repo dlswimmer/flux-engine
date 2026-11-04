@@ -1,10 +1,10 @@
 import { state } from "../core/state";
 import {
   MIN_INTERVAL,
-  areResetsPaused,
   autobuyInterval,
   hasAutoCollapse,
   hasEngineAutobuyers,
+  areResetsPaused,
   hasResetAutobuyers,
   nextAutobuyInterval,
 } from "../game/automation";
@@ -28,6 +28,8 @@ interface CardOptions {
   idle?: () => boolean;
   /** Extra settings shown under the switch. */
   settings?: HTMLElement;
+  /** Take a full row (long notes). Cards with settings always do. */
+  wide?: boolean;
 }
 
 function autobuyerCard(o: CardOptions): View {
@@ -35,7 +37,7 @@ function autobuyerCard(o: CardOptions): View {
   const note = h("span", { class: "auto-note" });
   const root = h(
     "div",
-    { class: o.settings ? "auto-card has-settings" : "auto-card" },
+    { class: o.settings || o.wide ? "auto-card has-settings" : "auto-card" },
     h("label", { class: "auto-card-main" }, h("span", { class: "auto-name" }, o.name, note), input),
     o.settings ?? null,
   );
@@ -99,7 +101,6 @@ const lockedUntil = (id: string) => () =>
 
 export function automationTab(): View {
   const speed = h("p", { class: "auto-speed-line" });
-  const paused = h("p", { class: "auto-paused" });
 
   const engineCards = ENGINE_NAMES.map((name, tier) =>
     autobuyerCard({
@@ -147,7 +148,7 @@ export function automationTab(): View {
         name: "Overdrive",
         get: () => state.automation.overdrive,
         set: (v) => (state.automation.overdrive = v),
-        note: () => "per Collapse; blank = no limit",
+        note: () => (areResetsPaused() ? "paused: you can Collapse" : "per Collapse; blank = no limit"),
         settings: overdriveLimit.el,
       }),
       autobuyerCard({
@@ -155,10 +156,19 @@ export function automationTab(): View {
         get: () => state.automation.lattice,
         set: (v) => (state.automation.lattice = v),
         note: () =>
-          shardUpgrades.has("latticeworks")
-            ? "goes before Overdrive"
-            : "each one resets your Overdrives, so more is often slower",
+          areResetsPaused()
+            ? "paused: you can Collapse"
+            : shardUpgrades.has("latticeworks")
+              ? "goes before Overdrive"
+              : "each one resets your Overdrives, so more is often slower",
         settings: latticeLimit.el,
+      }),
+      autobuyerCard({
+        name: "Pause at the Horizon",
+        get: () => state.automation.pauseResetsAtHorizon,
+        set: (v) => (state.automation.pauseResetsAtHorizon = v),
+        note: () => "once you can Collapse, a reset only restarts a finished run",
+        wide: true,
       }),
     ],
     lockedUntil("automators2"),
@@ -207,7 +217,7 @@ export function automationTab(): View {
   );
 
   const groups = [buyers, resets, heat, collapseGroup];
-  const root = h("section", { class: "tab automation-tab" }, paused, speed, ...groups.map((g) => g.root));
+  const root = h("section", { class: "tab automation-tab" }, speed, ...groups.map((g) => g.root));
 
   return {
     root,
@@ -220,8 +230,6 @@ export function automationTab(): View {
           : `Autobuyers act every ${now.toFixed(2)}s, ${nextAutobuyInterval().toFixed(2)}s after your next Collapse.`) +
           (shardUpgrades.has("overclock") ? " Overclocked ×3." : ""),
       );
-      setVisible(paused, areResetsPaused());
-      setText(paused, "You can Collapse, so auto Overdrive and Lattice are paused. Engine and Tempo buying carries on.");
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());
       setVisible(resets.root, hasEngineAutobuyers());

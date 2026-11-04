@@ -88,6 +88,8 @@ export interface GameState {
     /** Auto-resets stop once this Collapse has this many (Infinity = no limit). */
     overdriveMax: number;
     latticeMax: number;
+    /** Auto Overdrive/Lattice wait once you can Collapse (a reset then just restarts a run that's done). */
+    pauseResetsAtHorizon: boolean;
     /** Auto-Collapse (Self-Collapse upgrade): Collapse once the next one gives at least this many Shards (0 = as soon as possible). */
     collapse: boolean;
     collapseShards: number;
@@ -145,6 +147,7 @@ export function defaultState(): GameState {
       // without Latticeworks every extra Lattice slows a short run (unlimited: ~70% slower).
       overdriveMax: 10,
       latticeMax: 1,
+      pauseResetsAtHorizon: true,
       collapse: true,
       collapseShards: 0,
     },
