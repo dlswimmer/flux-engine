@@ -3,6 +3,7 @@ import {
   MIN_INTERVAL,
   areResetsPaused,
   autobuyInterval,
+  hasAutoCollapse,
   hasEngineAutobuyers,
   hasResetAutobuyers,
   nextAutobuyInterval,
@@ -181,7 +182,31 @@ export function automationTab(): View {
   });
   const heat = group("Heat", [ventCard], lockedUntil("thermostat"));
 
-  const groups = [buyers, resets, heat];
+  const collapseAt = h("input", {
+    type: "number",
+    min: 0,
+    step: 1,
+    placeholder: "any",
+    onChange: () => {
+      const v = Math.floor(Number(collapseAt.value));
+      state.automation.collapseShards = collapseAt.value.trim() === "" || !Number.isFinite(v) ? 0 : Math.max(0, v);
+    },
+  });
+  const collapseGroup = group(
+    "Collapse",
+    [
+      autobuyerCard({
+        name: "Auto-Collapse",
+        get: () => state.automation.collapse,
+        set: (v) => (state.automation.collapse = v),
+        note: () => "blank = as soon as you reach the Horizon",
+        settings: h("label", { class: "auto-setting" }, "When it gives at least", collapseAt, "Shards"),
+      }),
+    ],
+    lockedUntil("selfcollapse"),
+  );
+
+  const groups = [buyers, resets, heat, collapseGroup];
   const root = h("section", { class: "tab automation-tab" }, paused, speed, ...groups.map((g) => g.root));
 
   return {
@@ -200,6 +225,9 @@ export function automationTab(): View {
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());
       setVisible(resets.root, hasEngineAutobuyers());
+      setVisible(collapseGroup.root, hasAutoCollapse() || shardUpgrades.has("automators2"));
+      if (document.activeElement !== collapseAt)
+        collapseAt.value = state.automation.collapseShards > 0 ? String(state.automation.collapseShards) : "";
       overdriveLimit.sync();
       latticeLimit.sync();
       if (hasThermostat() && document.activeElement !== threshold) threshold.value = String(state.heat.autoVentAt);

@@ -15,12 +15,14 @@ npm run playtest        # feel (longest waits), Shard upgrade values, clicking c
 npm run playtest -- automation   # autobuyers vs holding M, Collapse 5–35
 npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrades
 npm run sim -- run 30 idle   # same, never venting Heat
+npm run sim -- rift 15 order target=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
+                                       # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
 npm run build
 ```
 
 Pushing to `main` deploys to GitHub Pages (`.github/workflows/deploy.yml`). `node scripts/make-icons.cjs` regenerates the app icons.
 
-Hotkeys: **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · **O** Overdrive · **L** Lattice · **V** vent Heat · **C** Collapse
+Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · **O** Overdrive · **L** Lattice · **V** vent Heat · **C** Collapse
 
 ## Vocabulary
 
@@ -34,7 +36,8 @@ Hotkeys: **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · *
 | Soft cap / first prestige point | **the Horizon** (1e200)    | 1     |
 | First prestige                  | **Collapse** → **Shards**  | 1     |
 | Active twist                    | **Heat** → vent → **Surge**| 1+    |
-| Second prestige                 | **Rift** → *TBD*, with an **Order / Entropy** branch | 2 |
+| Shard sink after Breach         | **Overcharge**             | 1     |
+| Second prestige                 | **Rift** → **Essence**, skill tree with an **Order / Entropy** branch | 2 |
 | Third prestige                  | **Ascension** → *TBD*      | 3     |
 
 ## Layers
@@ -67,14 +70,20 @@ Hotkeys: **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · *
 - Upgrades: *Heat Exchanger* (Surge lasts 50% longer) and *Thermostat* (auto-vent at a % you choose, default 70%).
 - Sim result: active runs are about 20% faster than idle (Collapse 6: 3m08s vs 3m56s; 15 Collapses in 1h09m vs 1h15m). That's worth pressing V, and idle is still fine. More push-your-luck depth belongs in the Entropy branch.
 
-**Branching prestige (planned, from Rift).** Each branch takes a stance on Heat:
-- **Order**: a lower Heat ceiling and steady passive bonuses. Suits idle play.
-- **Entropy**: bigger Surges, and Heat itself feeds bonuses. Suits active play.
-- Respeccing costs a Rift reset. Later layers can add more forks.
+**Branching prestige (built, Rift tree).** Each branch takes a stance on Heat:
+- **Order** (idle): *Even Keel* caps Heat at 60% (never throttles, never Surges) and gives ×2; *Long Burn* raises Momentum's cap to ×10; *Self-Winding* doubles autobuyer speed and Shards.
+- **Entropy** (active): *Flashpoint* Surges peak at ×8; *Backdraft* turns Heat into a bonus (up to ×4, following the draining bar during a Surge) instead of a throttle; *Chain Reaction* doubles Surge length, Heat build speed and Shards.
+- Buying the first node of one branch locks the other. "Respec at next Rift" refunds every node.
+- Sim (Rifting at 3 Essence each): Order is stronger early (Rift 5: 4m05s vs 5m08s), Entropy later (Rift 15: 1m32s vs 1m41s); both finish 15 Rifts within 4 minutes of each other.
 
-### 2 · Rift (planned)
-- Gated by Breach and a Flux target past the Horizon.
-- **Skill tree** with the Order/Entropy split. Milestones that automate Collapse. Rift Trials that stack the Collapse Trial rules.
+### 2 · Rift (built: v1)
+- **Overcharge** (after Breach): repeatable, all Engines ×2 per level, cost 5 × 1.25^level Shards. Each level pushes Flux ~5 orders of magnitude deeper past the Horizon. Reset by a Rift.
+- **Rift**: needs peak Flux ≥ **e350** in one Collapse. Gives **Essence** = 2^((log10 peak − 350) / 24): 1 at the threshold, doubling every 24 orders of magnitude deeper. Resets Shards, Overcharge and Shard upgrades (except milestone keeps); Collapse count stays (Echo, autobuyer speed).
+- **Milestones**: 1 Rift keeps automation + Kindling/Momentum/Echo/Ignition/Tuning/Gearing (when Rift 1 kept only automation, Rift 2 took twice as long as Rift 1); 2 keeps Cascade/Exchanger/Resonance/Latticeworks; 3 keeps Prism/Breach.
+- **Tree**: Rift Lens (1, all Engines ×(total Essence + 1)^0.75), Head Start (2, start each Collapse with 4 Overdrives), Shard Focus (3, Shards ×2), then a branch at 5 / 10 / 20. 41 Essence for everything.
+- **Self-Collapse** (Shard upgrade, 6, needs Foreman) unlocks auto-Collapse ("when it gives at least N Shards"). Before it existed, the sim needed ~280 manual Collapses before the first Rift.
+- **Pacing** (sim, Rifting at 3 Essence): Breach ~1h21m, first Rift ~25 min later, the whole tree ~1.5h after Breach. Waiting for bigger Rifts pays, but with diminishing returns (doubling every 8 orders of magnitude made "never Rift" optimal; Rift Lens at ^2 made every Rift after the first take ~10s).
+- **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
 
 ### 3 · Ascension and beyond (planned)
 - Each new layer follows the same shape: a currency, an upgrade set, its own Trials, a QoL milestone track, and one new *mechanic*, not just bigger numbers.

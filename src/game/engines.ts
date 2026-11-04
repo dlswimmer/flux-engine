@@ -4,6 +4,7 @@ import { HORIZON, collapseEngineMult, shardUpgrades } from "./collapse";
 import { addFlux } from "./flux";
 import { fluxThrottle, surgeMult } from "./heat";
 import { overdriveMult } from "./overdrive";
+import { riftEngineMult } from "./rift";
 import { buyMaxTempo, tempoMult } from "./tempo";
 
 export const ENGINE_NAMES = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII"];
@@ -99,7 +100,7 @@ export function maxAll() {
 export function engineMult(tier: number): Decimal {
   const engine = state.engines[tier];
   let mult = D(MILESTONE_MULT).pow(Math.floor(engine.bought / MILESTONE_SIZE));
-  mult = mult.mul(overdriveMult()).mul(collapseEngineMult()).mul(surgeMult());
+  mult = mult.mul(overdriveMult()).mul(collapseEngineMult()).mul(riftEngineMult()).mul(surgeMult());
   if (tier === 0) mult = mult.mul(fluxThrottle());
   if (shardUpgrades.has("cascade") && tier < ENGINE_COUNT - 1) {
     mult = mult.mul(1 + state.engines[tier + 1].bought * 0.02);

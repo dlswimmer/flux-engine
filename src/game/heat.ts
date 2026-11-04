@@ -1,5 +1,6 @@
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
+import { hasNode } from "./rift";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
 // throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
@@ -28,25 +29,27 @@ export function updateHeat(dt: number) {
   // this tick after the Surge ends counts (matters for big offline-catch-up ticks).
   const heatingTime = Math.max(0, dt - heat.surgeTime);
   heat.surgeTime = Math.max(0, heat.surgeTime - dt);
-  const rate = activeTiers() / ENGINE_COUNT / FILL_TIME;
+  const rate = (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1);
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
   heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
+  if (hasNode("even-keel")) heat.amount = Math.min(heat.amount, THROTTLE_START);
   if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
 }
 
 /** Multiplier on Flux output from overheating: 1 up to THROTTLE_START, down to THROTTLE_FLOOR at max. */
 export function fluxThrottle(): number {
   const h = state.heat.amount;
-  if (!isHeatUnlocked() || h <= THROTTLE_START) return 1;
+  if (!isHeatUnlocked() || h <= THROTTLE_START || hasNode("backdraft")) return 1;
   return 1 - ((1 - THROTTLE_FLOOR) * (h - THROTTLE_START)) / (HEAT_MAX - THROTTLE_START);
 }
 
-const surgeMax = () => (shardUpgrades.has("exchanger") ? 5 : 4);
+const surgeMax = () => (shardUpgrades.has("exchanger") ? 5 : 4) * (hasNode("flashpoint") ? 2 : 1);
 const SURGE_CURVE = 2; // >1 rewards venting hot: tiny frequent vents are weak
 
 /** Surge strength for venting at a given Heat: ×1 at 0, up to surgeMax() at 100. */
 export const surgeMultFor = (heat: number) => 1 + (surgeMax() - 1) * (heat / HEAT_MAX) ** SURGE_CURVE;
-export const surgeDuration = () => SURGE_DURATION * (shardUpgrades.has("exchanger") ? 1.5 : 1);
+export const surgeDuration = () =>
+  SURGE_DURATION * (shardUpgrades.has("exchanger") ? 1.5 : 1) * (hasNode("chain-reaction") ? 2 : 1);
 export const isSurging = () => state.heat.surgeTime > 0;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 

@@ -7,6 +7,7 @@ import { updateHeat } from "./heat";
 export function tick(dt: number) {
   state.stats.timePlayed += dt;
   state.collapse.time += dt;
+  state.rift.time += dt;
   runAutomation(dt);
   updateHeat(dt);
   produce(dt);

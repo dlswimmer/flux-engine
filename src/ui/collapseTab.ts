@@ -1,8 +1,49 @@
 import { formatCount, formatInt, formatTime } from "../core/format";
 import { state } from "../core/state";
-import { canCollapse, doCollapse, shardGain, shardUpgrades } from "../game/collapse";
+import {
+  buyMaxOvercharge,
+  buyOvercharge,
+  canBuyOvercharge,
+  canCollapse,
+  doCollapse,
+  isOverchargeUnlocked,
+  overchargeCost,
+  overchargeMult,
+  shardGain,
+  shardUpgrades,
+} from "../game/collapse";
 import type { UpgradeDef, UpgradeSet } from "../game/upgrades";
-import { h, keyHint, setClass, setText, setVisible, type View } from "./dom";
+import { h, holdToRepeat, keyHint, setClass, setDisabled, setText, setVisible, type View } from "./dom";
+import { formatMult } from "../core/format";
+
+/** The repeatable Shard sink after Breach. */
+function overchargePanel(): View {
+  const info = h("p", { class: "overcharge-info" });
+  const buy = h("button", { onClick: buyOvercharge });
+  holdToRepeat(buy, buyOvercharge);
+  const max = h("button", { class: "secondary", onClick: buyMaxOvercharge }, "Max");
+  const root = h(
+    "div",
+    { class: "panel overcharge" },
+    h("h3", {}, "Overcharge"),
+    info,
+    h("div", { class: "engine-buttons" }, buy, max),
+  );
+  return {
+    root,
+    update() {
+      setVisible(root, isOverchargeUnlocked());
+      if (!isOverchargeUnlocked()) return;
+      setText(
+        info,
+        `Level ${state.collapse.overcharge}: all Engines ${formatMult(overchargeMult())}. Each level doubles it, pushing Flux deeper past the Horizon. A Rift resets it.`,
+      );
+      setText(buy, `Overcharge · ${formatInt(overchargeCost())} Shards`);
+      setDisabled(buy, !canBuyOvercharge());
+      setClass(max, "dim", !canBuyOvercharge());
+    },
+  };
+}
 
 /** Generic upgrade card; future layers reuse it with their own UpgradeSet. */
 export function upgradeCard(set: UpgradeSet, def: UpgradeDef, currencyName: string): View {
@@ -34,12 +75,14 @@ export function collapseTab(): View {
   const summary = h("p", { class: "summary" });
   const button = h("button", { class: "collapse-btn wide", onClick: doCollapse });
   const cards = shardUpgrades.defs.map((def) => upgradeCard(shardUpgrades, def, "Shards"));
+  const overcharge = overchargePanel();
 
   const root = h(
     "section",
     { class: "tab collapse-tab" },
     summary,
     button,
+    overcharge.root,
     h("h3", {}, "Shard upgrades"),
     h("div", { class: "upgrade-grid" }, ...cards.map((c) => c.root)),
   );
@@ -54,6 +97,7 @@ export function collapseTab(): View {
       );
       setText(button, canCollapse() ? `Collapse for ${formatCount(shardGain(), "Shard")}${keyHint("C")}` : "Reach the Horizon to Collapse");
       button.disabled = !canCollapse();
+      overcharge.update();
       for (const card of cards) card.update();
     },
   };

@@ -46,7 +46,11 @@ export function headerView(): View {
       setText(progressLabel, pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`);
 
       setVisible(shards, isCollapseUnlocked());
-      setText(shards, `${formatInt(state.collapse.shards)} Shards`);
+      setText(
+        shards,
+        `${formatInt(state.collapse.shards)} Shards` +
+          (state.rift.count > 0 ? ` · ${formatInt(state.rift.essence)} Essence` : ""),
+      );
 
       // Once you've Collapsed before, the button keeps its slot (hidden when not ready) so the
       // page doesn't jump each time it appears. On phones it takes the Shards spot instead.

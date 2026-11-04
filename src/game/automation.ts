@@ -1,5 +1,6 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { canCollapse, shardUpgrades } from "./collapse";
+import { canCollapse, doCollapse, shardGain, shardUpgrades } from "./collapse";
+import { hasNode } from "./rift";
 import { buyMaxEngine } from "./engines";
 import { canLattice, doLattice } from "./lattice";
 import { canOverdrive, doOverdrive } from "./overdrive";
@@ -7,6 +8,7 @@ import { buyMaxTempo } from "./tempo";
 
 export const hasEngineAutobuyers = () => shardUpgrades.has("automators");
 export const hasResetAutobuyers = () => shardUpgrades.has("automators2");
+export const hasAutoCollapse = () => shardUpgrades.has("selfcollapse");
 
 // Autobuyers are balanced against a player holding M, which is 2–3× faster than
 // acting once a second (`npm run playtest -- automation`). They start slower than
@@ -21,6 +23,7 @@ export const MIN_INTERVAL = 0.05;
 export function autobuyInterval(): number {
   let interval = BASE_INTERVAL * SPEEDUP_PER_COLLAPSE ** state.collapse.count;
   if (shardUpgrades.has("overclock")) interval /= 3;
+  if (hasNode("self-winding")) interval /= 2;
   return Math.max(MIN_INTERVAL, interval);
 }
 
@@ -44,6 +47,11 @@ export function runAutomation(dt: number) {
   // Keep the remainder so the average rate is right, but never bank more than one extra activation.
   timer = Math.min(timer - interval, interval);
   const auto = state.automation;
+  // Auto-Collapse (Self-Collapse) goes first: once it's worth it, nothing else matters.
+  if (hasAutoCollapse() && auto.collapse && canCollapse() && shardGain().gte(auto.collapseShards)) {
+    doCollapse();
+    return;
+  }
   if (hasEngineAutobuyers()) {
     // Tempo first, like Max All: it boosts every tier.
     if (auto.tempo) buyMaxTempo();

@@ -46,6 +46,23 @@ export interface GameState {
     upgrades: string[];
     /** Most recent last, at most COLLAPSE_HISTORY. */
     history: CollapseRecord[];
+    /** Levels of the repeatable Overcharge Shard upgrade (after Breach). Reset by a Rift. */
+    overcharge: number;
+  };
+
+  // Layer 2: Rift
+  rift: {
+    essence: Decimal;
+    /** All Essence ever gained (Rift Lens scales with this, so spending never weakens it). */
+    totalEssence: Decimal;
+    count: number;
+    time: number;
+    bestTime: number;
+    /** Owned skill-tree nodes. */
+    nodes: string[];
+    /** Refund every node at the next Rift. */
+    respec: boolean;
+    introduced: boolean;
   };
 
   // Twist: Engines build Heat; venting it trades the heat for a temporary Surge.
@@ -69,6 +86,9 @@ export interface GameState {
     /** Auto-resets stop once this Collapse has this many (Infinity = no limit). */
     overdriveMax: number;
     latticeMax: number;
+    /** Auto-Collapse (Self-Collapse upgrade): Collapse once the next one gives at least this many Shards (0 = as soon as possible). */
+    collapse: boolean;
+    collapseShards: number;
   };
 
   stats: { timePlayed: number; totalFlux: Decimal; bestFlux: Decimal };
@@ -90,7 +110,18 @@ export function defaultState(): GameState {
     overdrives: 0,
     lattices: 0,
 
-    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), upgrades: [], history: [] },
+    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), upgrades: [], history: [], overcharge: 0 },
+
+    rift: {
+      essence: D(0),
+      totalEssence: D(0),
+      count: 0,
+      time: 0,
+      bestTime: Infinity,
+      nodes: [],
+      respec: false,
+      introduced: false,
+    },
 
     heat: {
       amount: 0,
@@ -112,6 +143,8 @@ export function defaultState(): GameState {
       // without Latticeworks every extra Lattice slows a short run (unlimited: ~70% slower).
       overdriveMax: 10,
       latticeMax: 1,
+      collapse: true,
+      collapseShards: 0,
     },
 
     stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0) },

@@ -8,6 +8,8 @@ import { buyMaxTempo } from "../game/tempo";
 import { actionBar } from "./actionBar";
 import { automationTab, isAutomationUnlocked } from "./automationTab";
 import { collapseTab } from "./collapseTab";
+import { riftTab } from "./riftTab";
+import { canRift, doRift, isRiftUnlocked } from "../game/rift";
 import { h, keyHint, setClass, setVisible, type View } from "./dom";
 import { enginesTab, toggleBuyMode } from "./enginesTab";
 import { headerView } from "./header";
@@ -29,6 +31,7 @@ const TABS: Tab[] = [
   { id: "engines", label: "Engines", unlocked: () => true, view: enginesTab() },
   { id: "collapse", label: "Collapse", unlocked: isCollapseUnlocked, view: collapseTab() },
   { id: "automation", label: "Automation", short: "Auto", unlocked: isAutomationUnlocked, view: automationTab() },
+  { id: "rift", label: "Rift", unlocked: isRiftUnlocked, view: riftTab() },
   { id: "stats", label: "Stats", unlocked: () => true, view: statsTab() },
   { id: "options", label: "Options", unlocked: () => true, view: optionsTab() },
 ];
@@ -40,6 +43,7 @@ const HOTKEYS: Record<string, () => unknown> = {
   l: doLattice,
   c: doCollapse,
   v: vent,
+  r: doRift,
   b: toggleBuyMode,
 };
 
@@ -71,6 +75,10 @@ export function mountUI(root: HTMLElement) {
     if (isHeatUnlocked() && !state.heat.introduced) {
       state.heat.introduced = true;
       notify(`Heat unlocked: your Engines now run hot. Vent${keyHint("V")} to turn Heat into a Surge.`, 8000);
+    }
+    if (canRift() && !state.rift.introduced) {
+      state.rift.introduced = true;
+      notify("The Rift is open: see the Rift tab. Rifting resets the Collapse layer for Essence.", 8000);
     }
     header.update();
     const active = TABS.find((t) => t.id === state.ui.tab && t.unlocked()) ?? TABS[0];

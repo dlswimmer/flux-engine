@@ -67,6 +67,9 @@ export function statsTab(): View {
     ["Collapses", () => String(state.collapse.count)],
     ["Time in this Collapse", () => formatTime(state.collapse.time)],
     ["Fastest Collapse", () => formatTime(state.collapse.bestTime)],
+    ["Rifts", () => String(state.rift.count)],
+    ["Fastest Rift", () => formatTime(state.rift.bestTime)],
+    ["Essence earned", () => format(state.rift.totalEssence)],
   ];
   const cells = rows.map(() => h("td", {}));
   const recent = recentCollapses();

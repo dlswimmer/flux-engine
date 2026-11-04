@@ -3,10 +3,11 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
+import { hasNode, riftShardMult } from "./rift";
 import { UpgradeSet } from "./upgrades";
 
-/** Momentum stops growing here; uncapped it was worth ×6 on a slow first run. */
-const MOMENTUM_CAP = 3;
+/** Momentum stops growing here; uncapped it was worth ×6 on a slow first run. Long Burn (Rift) raises it. */
+const momentumCap = () => (hasNode("long-burn") ? 10 : 3);
 
 /** Flux can't go past the Horizon until "Breach" is bought; reaching it lets you Collapse. */
 export const HORIZON = D("1e200");
@@ -24,9 +25,9 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "momentum",
       name: "Momentum",
-      desc: "Engines gain a bonus that grows with time spent in this Collapse (max ×3).",
+      desc: "Engines gain a bonus that grows with time spent in this Collapse (max ×3, ×10 with Long Burn).",
       cost: 1,
-      effect: () => D(Math.min(MOMENTUM_CAP, 1 + Math.sqrt(state.collapse.time / 60))),
+      effect: () => D(Math.min(momentumCap(), 1 + Math.sqrt(state.collapse.time / 60))),
       effectText: (v) => formatMult(v),
     },
     {
@@ -92,6 +93,13 @@ export const shardUpgrades = new UpgradeSet(
       requires: ["automators"],
     },
     {
+      id: "selfcollapse",
+      name: "Self-Collapse",
+      desc: "Unlock auto-Collapse (Automation tab): Collapse by itself once it's worth enough Shards.",
+      cost: 6,
+      requires: ["automators2"],
+    },
+    {
       id: "overclock",
       name: "Overclock",
       desc: "Autobuyers act 3× as often.",
@@ -147,6 +155,7 @@ export function shardGain(): Decimal {
     ? Decimal.pow(10, state.collapse.peakFlux.log10().div(HORIZON_LOG).sub(0.75))
     : D(1);
   if (shardUpgrades.has("prism")) gain = gain.mul(2);
+  gain = gain.mul(riftShardMult());
   return gain.floor().max(1);
 }
 
@@ -170,9 +179,48 @@ export function doCollapse(): boolean {
  * is the check.
  */
 export function collapseEngineMult(): Decimal {
-  let mult = shardUpgrades
+  return shardUpgrades
     .effect("kindling")
     .mul(shardUpgrades.effect("momentum"))
-    .mul(shardUpgrades.effect("echo"));
-  return mult;
+    .mul(shardUpgrades.effect("echo"))
+    .mul(overchargeMult());
+}
+
+// ---------- Overcharge: the repeatable Shard sink after Breach ----------
+// Each level multiplies every Engine; past the Horizon that pushes Flux deeper, which is
+// what opens the Rift. Reset by a Rift.
+
+const OVERCHARGE_BASE_COST = 5;
+const OVERCHARGE_COST_GROWTH = 1.25;
+const OVERCHARGE_MULT = 2;
+
+export const isOverchargeUnlocked = () => isBreached();
+// Exact for normal levels: Decimal.pow(2, 13) comes out as 8191.99..., shown as ×8,191.
+export const overchargeMult = () =>
+  state.collapse.overcharge <= 1000 ? D(OVERCHARGE_MULT ** state.collapse.overcharge) : D(OVERCHARGE_MULT).pow(state.collapse.overcharge);
+export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(OVERCHARGE_COST_GROWTH).pow(state.collapse.overcharge));
+export const canBuyOvercharge = () => isOverchargeUnlocked() && state.collapse.shards.gte(overchargeCost());
+
+export function buyOvercharge(): boolean {
+  if (!canBuyOvercharge()) return false;
+  state.collapse.shards = state.collapse.shards.sub(overchargeCost());
+  state.collapse.overcharge++;
+  return true;
+}
+
+export function buyMaxOvercharge(): number {
+  if (!isOverchargeUnlocked()) return 0;
+  const count = Decimal.affordGeometricSeries(
+    state.collapse.shards,
+    OVERCHARGE_BASE_COST,
+    OVERCHARGE_COST_GROWTH,
+    state.collapse.overcharge,
+  )
+    .floor()
+    .toNumber();
+  if (!(count > 0) || !Number.isFinite(count)) return 0;
+  const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, OVERCHARGE_COST_GROWTH, state.collapse.overcharge);
+  state.collapse.shards = state.collapse.shards.sub(cost).max(0);
+  state.collapse.overcharge += count;
+  return count;
 }
