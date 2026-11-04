@@ -12,6 +12,8 @@ export interface UpgradeDef {
   requires?: string[];
   /** Hidden and unbuyable until this returns true (e.g. its mechanic isn't unlocked yet). */
   unlocked?: () => boolean;
+  /** Runs once when bought, e.g. to apply a "start with X" upgrade to the current run too. */
+  onBuy?: () => void;
 }
 
 export interface Currency {
@@ -60,6 +62,7 @@ export class UpgradeSet {
     if (!this.canBuy(id)) return false;
     this.currency.set(this.currency.get().sub(this.get(id).cost));
     this.owned().push(id);
+    this.get(id).onBuy?.();
     return true;
   }
 

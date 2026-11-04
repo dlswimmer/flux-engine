@@ -46,8 +46,12 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "ignition",
       name: "Ignition",
-      desc: "Start every Collapse with 1 Overdrive.",
+      desc: "Start every Collapse with 1 Overdrive (including this one).",
       cost: 2,
+      // Usually bought right after a Collapse, so it should count for the run you're in.
+      onBuy: () => {
+        if (state.overdrives < 1) state.overdrives = 1;
+      },
     },
     {
       id: "tuning",
