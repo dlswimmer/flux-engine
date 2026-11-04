@@ -66,6 +66,9 @@ export interface GameState {
     tempo: boolean;
     overdrive: boolean;
     lattice: boolean;
+    /** Auto-resets stop once this Collapse has this many (Infinity = no limit). */
+    overdriveMax: number;
+    latticeMax: number;
   };
 
   stats: { timePlayed: number; totalFlux: Decimal; bestFlux: Decimal };
@@ -105,6 +108,10 @@ export function defaultState(): GameState {
       tempo: true,
       overdrive: false,
       lattice: false,
+      // Sim (fully automated, ~Collapse 23-30): stopping near 10 Overdrives is fastest, and
+      // without Latticeworks every extra Lattice slows a short run (unlimited: ~70% slower).
+      overdriveMax: 10,
+      latticeMax: 1,
     },
 
     stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0) },

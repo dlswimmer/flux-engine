@@ -234,6 +234,9 @@ h3 .auto-badge { margin-left: 8px; }
   transition: border-color 0.15s;
 }
 .auto-card.on { border-color: var(--flux-dim); }
+/* Cards with extra settings get a full row so the settings fit on one line */
+.auto-card.has-settings { grid-column: 1 / -1; }
+.auto-setting { flex-wrap: wrap; }
 .auto-card.idle { opacity: 0.55; }
 .auto-card-main {
   display: flex;

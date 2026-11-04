@@ -34,7 +34,7 @@ function autobuyerCard(o: CardOptions): View {
   const note = h("span", { class: "auto-note" });
   const root = h(
     "div",
-    { class: "auto-card" },
+    { class: o.settings ? "auto-card has-settings" : "auto-card" },
     h("label", { class: "auto-card-main" }, h("span", { class: "auto-name" }, o.name, note), input),
     o.settings ?? null,
   );
@@ -62,6 +62,33 @@ function group(title: string, cards: View[], lockedBy?: () => string | null, ext
       setText(lockNote, lock ?? "");
       setVisible(grid, lock === null);
       if (lock === null) for (const c of cards) c.update();
+    },
+  };
+}
+
+/**
+ * "Stop at [N] ..." number box. Blank means no limit (stored as Infinity, which the save
+ * format round-trips). Returns the element and a sync() to call each frame.
+ */
+function limitSetting(label: string, unit: string, get: () => number, set: (v: number) => void) {
+  const input = h("input", {
+    type: "number",
+    min: 0,
+    step: 1,
+    placeholder: "∞",
+    onChange: () => {
+      const raw = input.value.trim();
+      const v = Math.floor(Number(raw));
+      set(raw === "" || !Number.isFinite(v) ? Infinity : Math.max(0, v));
+    },
+  });
+  const el = h("label", { class: "auto-setting" }, label, input, unit);
+  return {
+    el,
+    sync() {
+      if (document.activeElement === input) return;
+      const v = get();
+      input.value = Number.isFinite(v) ? String(v) : "";
     },
   };
 }
@@ -100,6 +127,18 @@ export function automationTab(): View {
   );
   const buyers = group("Engines & Tempo", [tempoCard, ...engineCards], lockedUntil("automators"), allButtons);
 
+  const overdriveLimit = limitSetting(
+    "Stop at",
+    "Overdrives",
+    () => state.automation.overdriveMax,
+    (v) => (state.automation.overdriveMax = v),
+  );
+  const latticeLimit = limitSetting(
+    "Stop at",
+    "Lattices",
+    () => state.automation.latticeMax,
+    (v) => (state.automation.latticeMax = v),
+  );
   const resets = group(
     "Resets",
     [
@@ -107,13 +146,18 @@ export function automationTab(): View {
         name: "Overdrive",
         get: () => state.automation.overdrive,
         set: (v) => (state.automation.overdrive = v),
-        note: () => "as soon as it's affordable",
+        note: () => "per Collapse; blank = no limit",
+        settings: overdriveLimit.el,
       }),
       autobuyerCard({
         name: "Lattice",
         get: () => state.automation.lattice,
         set: (v) => (state.automation.lattice = v),
-        note: () => "takes priority over Overdrive",
+        note: () =>
+          shardUpgrades.has("latticeworks")
+            ? "goes before Overdrive"
+            : "each one resets your Overdrives, so more is often slower",
+        settings: latticeLimit.el,
       }),
     ],
     lockedUntil("automators2"),
@@ -156,6 +200,8 @@ export function automationTab(): View {
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());
       setVisible(resets.root, hasEngineAutobuyers());
+      overdriveLimit.sync();
+      latticeLimit.sync();
       if (hasThermostat() && document.activeElement !== threshold) threshold.value = String(state.heat.autoVentAt);
     },
   };
