@@ -347,6 +347,7 @@ h3 .auto-badge { margin-left: 8px; }
 .stats-tab th { text-align: left; font-weight: normal; color: var(--text-dim); padding: 6px 0; }
 .stats-tab td { text-align: right; font-family: var(--mono); }
 .options-tab { display: flex; flex-direction: column; gap: 12px; }
+.dev-note { margin: 4px 0 8px; color: var(--text-dim); font-size: 13px; }
 .button-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .confirm-row {
   display: flex;

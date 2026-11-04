@@ -39,6 +39,29 @@ export function resetForCollapse() {
   resetHeat();
 }
 
+// ---------- Test tools (Options → Dev, shown with ?dev) ----------
+
+/** Shards and Overcharge to 0 and a fresh Collapse; Shard upgrades and Collapse count stay. */
+export function devResetShards() {
+  state.collapse.shards = D(0);
+  state.collapse.overcharge = 0;
+  resetForCollapse();
+}
+
+/** Back to before your first Rift: no Essence, Rifts or tree nodes. */
+export function devResetRift() {
+  state.rift.essence = D(0);
+  state.rift.totalEssence = D(0);
+  state.rift.count = 0;
+  state.rift.time = 0;
+  state.rift.bestTime = Infinity;
+  state.rift.nodes = [];
+  state.rift.respec = false;
+  state.rift.introduced = false;
+  // Head Start's 4 Overdrives no longer apply.
+  resetForCollapse();
+}
+
 /**
  * A Rift wipes the Collapse layer: Shards, Overcharge, and every Shard upgrade except the
  * ones Rift milestones keep. Collapse count stays (it drives Echo and autobuyer speed).

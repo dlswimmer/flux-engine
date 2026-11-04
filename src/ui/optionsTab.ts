@@ -1,11 +1,37 @@
 import { state } from "../core/state";
 import { exportSave, hardReset, importSave, saveGame } from "../core/save";
+import { devResetRift, devResetShards } from "../game/reset";
 import { h, setClass, setDisabled, setVisible, toggle, type View } from "./dom";
 import { notify } from "./toast";
 
 /** Dev tools show on the dev server (npm run dev) or with ?dev; production builds hide them. */
 export const DEV_MODE = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
 const DEV_SPEEDS = [1, 10, 100];
+
+/**
+ * A button that needs a second tap within 3s. Lighter than the type-"reset" box: these only
+ * touch one layer, and they're dev tools.
+ */
+function tapTwice(label: string, act: () => void, done: string): HTMLButtonElement {
+  let armedUntil = 0;
+  const button = h("button", { class: "danger" }, label);
+  button.addEventListener("click", () => {
+    if (Date.now() < armedUntil) {
+      armedUntil = 0;
+      button.textContent = label;
+      act();
+      saveGame();
+      notify(done);
+      return;
+    }
+    armedUntil = Date.now() + 3000;
+    button.textContent = "Tap again to confirm";
+    setTimeout(() => {
+      if (Date.now() >= armedUntil) button.textContent = label;
+    }, 3100);
+  });
+  return button;
+}
 
 export function optionsTab(): View {
   const box = h("textarea", { rows: 4, placeholder: "Exported save appears here; paste one to import." });
@@ -69,6 +95,17 @@ export function optionsTab(): View {
     { class: "panel" },
     h("h3", {}, "Dev"),
     h("div", { class: "button-row" }, "Game speed ", ...speedButtons),
+    h(
+      "p",
+      { class: "dev-note" },
+      "Test tools: start a layer over without wiping the rest of the save.",
+    ),
+    h(
+      "div",
+      { class: "button-row" },
+      tapTwice("Reset Shards (keep upgrades)", devResetShards, "Shards and Overcharge reset; upgrades kept"),
+      tapTwice("Reset Rift progress", devResetRift, "Essence, Rifts and the Rift tree reset"),
+    ),
   );
 
   const root = h(

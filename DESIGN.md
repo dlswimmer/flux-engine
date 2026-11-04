@@ -8,7 +8,7 @@ and content.
 
 ```
 npm install
-npm run dev             # http://localhost:5173  (add ?dev for the game-speed slider)
+npm run dev             # http://localhost:5173  (add ?dev, also on github.io, for game speed and test tools: reset Shards or Rift progress without a full wipe)
 npm run sim             # strategy sweep: which first-run route is fastest? (flags exploits)
 npm run sim -- trace    # every reset in one full-route first run
 npm run playtest        # feel (longest waits), Shard upgrade values, clicking cadence
