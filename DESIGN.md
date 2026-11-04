@@ -99,6 +99,7 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 
   Buying Automators first (instead of cheapest-first) helps casual players ~10 min but costs active ones ~20 (early autobuyers are slower than a clicking player). Soft spot: casual players are 2× slower before Automators.
 - **Pacing** (sim, earlier tuning run): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
+- **Watch (playtest, 2026-11-04):** an active player could finish their second Rift in ~17 min (the 1s sim bot takes ~1h). It may feel fast only because there is nothing after the Rift tree yet. Revisit when the next layer or an Essence sink lands: if Rifts still feel rushed, raise the Overcharge requirement or slow Overcharge cost growth (×1.35 now).
 - **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
 
 ### 3 · Ascension and beyond (planned)
