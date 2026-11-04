@@ -25,6 +25,7 @@ export const canLattice = () => state.engines[ENGINE_COUNT - 1].amount.gte(latti
 export function doLattice(): boolean {
   if (!canLattice()) return false;
   state.lattices++;
+  state.stats.lattices++;
   resetForLattice();
   return true;
 }

@@ -25,6 +25,7 @@ export function canOverdrive(): boolean {
 export function doOverdrive(): boolean {
   if (!canOverdrive()) return false;
   state.overdrives++;
+  state.stats.overdrives++;
   resetForOverdrive();
   return true;
 }

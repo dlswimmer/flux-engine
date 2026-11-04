@@ -1,5 +1,5 @@
 import { D, Decimal } from "../lib/decimal";
-import { state } from "../core/state";
+import { RIFT_HISTORY, state } from "../core/state";
 import { isBreached } from "./collapse";
 import { displayedHeat } from "./heat";
 import { resetForRift } from "./reset";
@@ -35,6 +35,10 @@ export function doRift(): boolean {
   rift.essence = rift.essence.add(gain);
   rift.totalEssence = rift.totalEssence.add(gain);
   rift.count++;
+  rift.history = [
+    ...rift.history,
+    { number: rift.count, time: rift.time, essence: gain, collapses: state.collapse.count, overcharge: state.collapse.overcharge },
+  ].slice(-RIFT_HISTORY);
   rift.bestTime = Math.min(rift.bestTime, rift.time);
   if (rift.respec) {
     rift.essence = rift.essence.add(spentEssence());

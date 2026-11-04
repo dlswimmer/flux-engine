@@ -334,7 +334,12 @@ h3 .auto-badge { margin-left: 8px; }
 .stats-tab table { border-collapse: collapse; width: 100%; max-width: 520px; }
 .stats-tab .history th { color: var(--text-dim); font-size: 12px; text-align: right; padding: 4px 0; }
 .stats-tab .history th:first-child, .stats-tab .history td:first-child { text-align: left; color: var(--text-dim); }
-.stats-tab .history td { padding: 4px 0; }
+.stats-tab .history td { padding: 4px 0 4px 10px; }
+.stats-tab .history th { padding-left: 10px; }
+.stats-tab .history th:first-child, .stats-tab .history td:first-child { padding-left: 0; }
+/* Wide tables scroll inside their panel instead of widening the page on phones */
+.stats-tab .panel { overflow-x: auto; }
+.stats-tab .history { white-space: nowrap; }
 .stats-tab .history tr.best td { color: var(--flux); }
 .history-average { margin: 8px 0 0; color: var(--text-dim); font-size: 13px; }
 .stats-tab th { text-align: left; font-weight: normal; color: var(--text-dim); padding: 6px 0; }
@@ -477,6 +482,8 @@ textarea {
   .reset-panels { grid-template-columns: 1fr; }
   .reset-panel p { min-height: 2.9em; }
   .upgrade-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stats-tab .history { font-size: 12px; }
+  .stats-tab .history td, .stats-tab .history th { padding-left: 6px; }
   .rift-branches { grid-template-columns: 1fr; }
   .rift-core { grid-template-columns: repeat(2, 1fr); }
   .overcharge .engine-buttons button:first-child { min-width: 0; flex: 1; }

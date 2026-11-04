@@ -189,11 +189,12 @@ export function doCollapse(): boolean {
   if (!canCollapse()) return false;
   const gain = shardGain();
   state.collapse.shards = state.collapse.shards.add(gain);
+  state.stats.shardsEarned = state.stats.shardsEarned.add(gain);
   state.stats.collapses = totalCollapses() + 1;
   state.collapse.count++;
   state.collapse.history = [
     ...state.collapse.history,
-    { number: state.stats.collapses, time: state.collapse.time, shards: gain },
+    { number: state.stats.collapses, time: state.collapse.time, shards: gain, rift: state.rift.count },
   ].slice(-COLLAPSE_HISTORY);
   state.collapse.bestTime = Math.min(state.collapse.bestTime, state.collapse.time);
   resetForCollapse();

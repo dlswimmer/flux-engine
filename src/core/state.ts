@@ -15,7 +15,23 @@ export interface CollapseRecord {
   /** Game seconds the run took. */
   time: number;
   shards: Decimal;
+  /** Rifts done before this Collapse (0 = before your first Rift). Missing in older saves. */
+  rift?: number;
 }
+
+/** One finished Rift, for the recent-Rifts table on the Stats tab. */
+export interface RiftRecord {
+  number: number;
+  /** Game seconds since the previous Rift (or the start of the game). */
+  time: number;
+  essence: Decimal;
+  collapses: number;
+  /** Overcharge level when you Rifted. */
+  overcharge: number;
+}
+
+/** How many recent Rifts the save keeps. */
+export const RIFT_HISTORY = 10;
 
 /** How many recent Collapses the save keeps. */
 export const COLLAPSE_HISTORY = 10;
@@ -64,6 +80,8 @@ export interface GameState {
     nodes: string[];
     /** Refund every node at the next Rift. */
     respec: boolean;
+    /** Most recent last, at most RIFT_HISTORY. */
+    history: RiftRecord[];
     introduced: boolean;
   };
 
@@ -96,7 +114,16 @@ export interface GameState {
   };
 
   /** collapses: lifetime Collapse count (collapse.count is this Rift's; a Rift resets it). */
-  stats: { timePlayed: number; totalFlux: Decimal; bestFlux: Decimal; collapses: number };
+  stats: {
+    timePlayed: number;
+    totalFlux: Decimal;
+    bestFlux: Decimal;
+    collapses: number;
+    /** Lifetime counters; older saves start counting from when they were added. */
+    shardsEarned: Decimal;
+    overdrives: number;
+    lattices: number;
+  };
   options: { autosave: boolean; offlineProgress: boolean; devSpeed: number };
   ui: { tab: string; buyMode: "one" | "next" };
 }
@@ -125,6 +152,7 @@ export function defaultState(): GameState {
       bestTime: Infinity,
       nodes: [],
       respec: false,
+      history: [],
       introduced: false,
     },
 
@@ -153,7 +181,7 @@ export function defaultState(): GameState {
       collapseShards: 0,
     },
 
-    stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0 },
+    stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0, shardsEarned: D(0), overdrives: 0, lattices: 0 },
     options: { autosave: true, offlineProgress: true, devSpeed: 1 },
     ui: { tab: "engines", buyMode: "next" },
   };
