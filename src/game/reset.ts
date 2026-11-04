@@ -18,17 +18,21 @@ export function resetForOverdrive() {
 
 const LATTICEWORKS_KEEPS = 4;
 
+/** Ignition's Overdrive is a floor for the whole Collapse: no reset inside it goes below this. */
+const minOverdrives = () => (shardUpgrades.has("ignition") ? 1 : 0);
+
 export function resetForLattice() {
   resetEngineFloor();
   // Latticeworks keeps the 4 Overdrives that unlock Engines V–VIII; the extra ×2s still reset.
   // Without it, short late runs skip Lattice entirely: rebuilding costs more than it gives.
-  state.overdrives = shardUpgrades.has("latticeworks") ? Math.min(state.overdrives, LATTICEWORKS_KEEPS) : 0;
+  const kept = shardUpgrades.has("latticeworks") ? Math.min(state.overdrives, LATTICEWORKS_KEEPS) : 0;
+  state.overdrives = Math.max(kept, minOverdrives());
 }
 
 export function resetForCollapse() {
   resetForLattice();
   state.lattices = 0;
-  state.overdrives = shardUpgrades.has("ignition") ? 1 : 0;
+  state.overdrives = minOverdrives();
   state.collapse.time = 0;
   resetHeat();
 }
