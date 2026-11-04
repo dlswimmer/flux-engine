@@ -211,7 +211,9 @@ function heatPanel(): View {
 
       const throttle = fluxThrottle();
       const parts = [
-        isSurging() ? `Surging: all Engines ×${heat.surgeMult.toFixed(2)} for ${heat.surgeTime.toFixed(1)}s.` : "",
+        isSurging()
+          ? `Surging: all Engines ×${heat.surgeMult.toFixed(2)} for ${heat.surgeTime.toFixed(1)}s. No Heat builds while venting.`
+          : "",
         throttle < 1
           ? `Overheating: Flux output ×${throttle.toFixed(2)}.`
           : `Engines heat up as they run. Above ${THROTTLE_START}% Flux output drops.`,

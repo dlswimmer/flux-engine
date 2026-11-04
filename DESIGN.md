@@ -60,9 +60,9 @@ Hotkeys: **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · *
 - Above 60%, Flux output drops gently, down to ×0.8 at 100%. This only hits Engine I, so idle play stays fully viable.
 - **Vent** (V) resets Heat and starts a **Surge**: all Engines ×(1 + 3·(Heat/100)²) for 15 seconds, so ×1.75 at 50%, ×2.7 at 75%, ×4 at 100%.
 - You can't vent during a Surge. Earlier tuning let tiny vents chain into a permanent boost, which made mashing V optimal. The quadratic curve keeps small vents weak for the same reason.
-- Heat refills to about 53% during a Surge, so the real choice is "vent right away or wait". In the sim, venting anywhere from 50–75% is about equally good (forgiving, not fiddly), 90% is slightly worse, and a steeper (cubic) curve made every timing worse.
+- **No Heat builds during a Surge** (the vent is still open). Heat then refills fast (time constant 8s with all tiers running, 0→75% in about 11s), so the cycle is roughly a 15s Surge plus 11s of heating. In the sim, venting at 75% is best, 50% and 90% are within 2%, and 30% is clearly worse (mashing doesn't pay). A steeper (cubic) Surge curve made every timing worse.
 - Upgrades: *Heat Exchanger* (Surge lasts 50% longer) and *Thermostat* (auto-vent at a % you choose, default 70%).
-- Sim result: active runs are 10–17% faster than idle (Collapse 6: 3m21s vs 4m01s). That's worth pressing V, and idle is still fine. More push-your-luck depth belongs in the Entropy branch.
+- Sim result: active runs are about 20% faster than idle (Collapse 6: 3m08s vs 3m56s; 15 Collapses in 1h09m vs 1h15m). That's worth pressing V, and idle is still fine. More push-your-luck depth belongs in the Entropy branch.
 
 **Branching prestige (planned, from Rift).** Each branch takes a stance on Heat:
 - **Order**: a lower Heat ceiling and steady passive bonuses. Suits idle play.

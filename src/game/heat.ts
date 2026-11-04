@@ -9,7 +9,9 @@ import { shardUpgrades } from "./collapse";
 export const HEAT_MAX = 100;
 export const THROTTLE_START = 60;
 const THROTTLE_FLOOR = 0.8;
-const FILL_TIME = 20; // time constant in seconds with all 8 tiers running
+// Time constant in seconds with all 8 tiers running. Fast on purpose: Heat is frozen
+// during a Surge, so this sets how soon the next vent comes (sim: active ~20% faster than idle).
+const FILL_TIME = 8;
 const MIN_VENT = 5;
 const SURGE_DURATION = 15;
 const HEAT_UNLOCK_COLLAPSES = 3;
@@ -22,10 +24,13 @@ const activeTiers = () => state.engines.filter((e) => e.amount.gt(0)).length;
 export function updateHeat(dt: number) {
   if (!isHeatUnlocked()) return;
   const heat = state.heat;
+  // A Surge is the vent still open: no Heat builds until it closes. Only the part of
+  // this tick after the Surge ends counts (matters for big offline-catch-up ticks).
+  const heatingTime = Math.max(0, dt - heat.surgeTime);
+  heat.surgeTime = Math.max(0, heat.surgeTime - dt);
   const rate = activeTiers() / ENGINE_COUNT / FILL_TIME;
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
-  heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * dt));
-  heat.surgeTime = Math.max(0, heat.surgeTime - dt);
+  heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
   if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
 }
 
