@@ -1,5 +1,5 @@
 import { D, Decimal } from "../lib/decimal";
-import { state } from "../core/state";
+import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
@@ -149,8 +149,13 @@ export function shardGain(): Decimal {
 
 export function doCollapse(): boolean {
   if (!canCollapse()) return false;
-  state.collapse.shards = state.collapse.shards.add(shardGain());
+  const gain = shardGain();
+  state.collapse.shards = state.collapse.shards.add(gain);
   state.collapse.count++;
+  state.collapse.history = [
+    ...state.collapse.history,
+    { number: state.collapse.count, time: state.collapse.time, shards: gain },
+  ].slice(-COLLAPSE_HISTORY);
   state.collapse.bestTime = Math.min(state.collapse.bestTime, state.collapse.time);
   resetForCollapse();
   return true;
