@@ -1,9 +1,11 @@
 import { state } from "../core/state";
 import {
   MIN_INTERVAL,
+  areResetsPaused,
   autobuyInterval,
   hasEngineAutobuyers,
   hasResetAutobuyers,
+  isBuyingPaused,
   nextAutobuyInterval,
 } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
@@ -70,6 +72,7 @@ const lockedUntil = (id: string) => () =>
 
 export function automationTab(): View {
   const speed = h("p", { class: "auto-speed-line" });
+  const paused = h("p", { class: "auto-paused" });
 
   const engineCards = ENGINE_NAMES.map((name, tier) =>
     autobuyerCard({
@@ -136,7 +139,7 @@ export function automationTab(): View {
   const heat = group("Heat", [ventCard], lockedUntil("thermostat"));
 
   const groups = [buyers, resets, heat];
-  const root = h("section", { class: "tab automation-tab" }, speed, ...groups.map((g) => g.root));
+  const root = h("section", { class: "tab automation-tab" }, paused, speed, ...groups.map((g) => g.root));
 
   return {
     root,
@@ -148,6 +151,13 @@ export function automationTab(): View {
           ? `Autobuyers act every tick (${now.toFixed(2)}s), the fastest possible.`
           : `Autobuyers act every ${now.toFixed(2)}s, ${nextAutobuyInterval().toFixed(2)}s after your next Collapse.`) +
           (shardUpgrades.has("overclock") ? " Overclocked ×3." : ""),
+      );
+      setVisible(paused, areResetsPaused());
+      setText(
+        paused,
+        isBuyingPaused()
+          ? "Paused: you can Collapse. Autobuyers wait so they don't spend you back below the Horizon."
+          : "Auto-resets paused: you can Collapse. Engine and Tempo buying continues (more Flux, more Shards).",
       );
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());

@@ -1,7 +1,7 @@
 import { format, formatInt, formatMult, formatTime } from "../core/format";
 import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
-import { hasEngineAutobuyers, hasResetAutobuyers } from "../game/automation";
+import { hasEngineAutobuyers, hasResetAutobuyers, isBuyingPaused } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
 import {
   ENGINE_NAMES,
@@ -112,7 +112,7 @@ function engineRow(tier: number): View {
         const eta = fluxEta(cost);
         setText(
           growth,
-          state.flux.gte(cost) ? "buying…" : !Number.isFinite(eta) ? "" : eta < 60 ? `~${Math.ceil(eta)}s` : `~${formatTime(eta)}`,
+          isBuyingPaused() ? "paused" : state.flux.gte(cost) ? "buying…" : !Number.isFinite(eta) ? "" : eta < 60 ? `~${Math.ceil(eta)}s` : `~${formatTime(eta)}`,
         );
         // Flux grows exponentially, so progress is measured in orders of magnitude: a linear
         // bar would sit near empty and then jump to full at the very end.

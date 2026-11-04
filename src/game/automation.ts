@@ -1,5 +1,5 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { shardUpgrades } from "./collapse";
+import { canCollapse, isBreached, shardUpgrades } from "./collapse";
 import { buyMaxEngine } from "./engines";
 import { canLattice, doLattice } from "./lattice";
 import { canOverdrive, doOverdrive } from "./overdrive";
@@ -28,6 +28,15 @@ export function autobuyInterval(): number {
 export const nextAutobuyInterval = () =>
   Math.max(MIN_INTERVAL, autobuyInterval() * SPEEDUP_PER_COLLAPSE);
 
+/**
+ * Once a Collapse is ready, the only useful move is Collapsing, so autobuyers stand down:
+ * before Breach, Flux is capped at the Horizon and any purchase knocks it back below,
+ * and an auto Overdrive/Lattice would wipe the run. After Breach more Flux means more
+ * Shards, so buying continues; only the resets pause.
+ */
+export const isBuyingPaused = () => canCollapse() && !isBreached();
+export const areResetsPaused = () => canCollapse();
+
 let timer = 0;
 
 export function runAutomation(dt: number) {
@@ -37,14 +46,14 @@ export function runAutomation(dt: number) {
   // Keep the remainder so the average rate is right, but never bank more than one extra activation.
   timer = Math.min(timer - interval, interval);
   const auto = state.automation;
-  if (hasEngineAutobuyers()) {
+  if (hasEngineAutobuyers() && !isBuyingPaused()) {
     // Tempo first, like Max All: it boosts every tier.
     if (auto.tempo) buyMaxTempo();
     for (let tier = ENGINE_COUNT - 1; tier >= 0; tier--) {
       if (auto.engines[tier]) buyMaxEngine(tier);
     }
   }
-  if (hasResetAutobuyers()) {
+  if (hasResetAutobuyers() && !areResetsPaused()) {
     if (auto.lattice && canLattice()) doLattice();
     else if (auto.overdrive && canOverdrive()) doOverdrive();
   }
