@@ -16,10 +16,13 @@ export function resetForOverdrive() {
   resetEngineFloor();
 }
 
+const LATTICEWORKS_KEEPS = 4;
+
 export function resetForLattice() {
   resetEngineFloor();
-  // Without this, short late runs skip Lattice entirely: rebuilding Overdrives costs more than it gives.
-  if (!shardUpgrades.has("latticeworks")) state.overdrives = 0;
+  // Latticeworks keeps the 4 Overdrives that unlock Engines V–VIII; the extra ×2s still reset.
+  // Without it, short late runs skip Lattice entirely: rebuilding costs more than it gives.
+  state.overdrives = shardUpgrades.has("latticeworks") ? Math.min(state.overdrives, LATTICEWORKS_KEEPS) : 0;
 }
 
 export function resetForCollapse() {

@@ -104,7 +104,7 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "latticeworks",
       name: "Latticeworks",
-      desc: "Lattices keep your Overdrives and need 15 fewer Engine VIII.",
+      desc: "Lattices keep up to 4 Overdrives (Engines V–VIII stay unlocked) and need 15 fewer Engine VIII.",
       cost: 5,
     },
     {

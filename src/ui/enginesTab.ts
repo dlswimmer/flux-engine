@@ -249,7 +249,7 @@ export function enginesTab(): View {
     "Lattice",
     () =>
       `${state.lattices} Lattices: Tempo +${latticeTempoBonus().toFixed(2)} per level. ` +
-      (shardUpgrades.has("latticeworks") ? "Keeps Overdrives." : "Resets Overdrives too."),
+      (shardUpgrades.has("latticeworks") ? "Keeps up to 4 Overdrives." : "Resets Overdrives too."),
     canLattice,
     doLattice,
     () => `Form Lattice · needs ${formatInt(latticeRequirement())} Engine VIII`,

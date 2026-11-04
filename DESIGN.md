@@ -44,14 +44,14 @@ Hotkeys: **M** max all · **B** buy mode (1 / until ×2) · **T** max Tempo · *
 - Each purchase raises that Engine's cost; every 10 purchases doubles its output. Cost per 10 rises from ×1.5e3 (Engine I) to ×1e15 (Engine VIII). This scaling is deliberately steep, so no single tier can snowball on its own.
 - **Tempo** (×1.10 per level, cost ×8) multiplies every Engine. It's the main growth engine.
 - **Overdrive** (all Engines ×2): the first four need 10 of your highest Engine and each unlock the next Engine. After that, 20 Engine VIII, then +10 each.
-- **Lattice**: needs 40 (+20 each) Engine VIII. Adds +0.04 to each Tempo level. Resets Overdrives (until *Latticeworks*).
+- **Lattice**: needs 40 (+20 each) Engine VIII. Adds +0.04 to each Tempo level. Resets Overdrives (*Latticeworks* keeps 4).
 - Engines II–IV are cheap (30 / 400 / 1e4) so the opening, and every rebuild after a Lattice, moves fast: Engine II at ~20s, first Overdrive at ~2m15s.
 
 ### 1 · Collapse (built: core loop + 15 upgrades)
 - Flux stops at the Horizon (1e200). Collapsing gives 1 Shard (×2 with *Prism*, cost 3). *Breach* (12) lets Flux pass the Horizon and makes Shard gain scale with Flux.
 - Upgrade values from `npm run playtest -- upgrades` (time saved alone at Collapse 1 / leave-one-out at Collapse 15): Momentum 56% / 24%, Kindling 45 / 24, Echo 22 / 40, Gearing 22 / 34, Cascade 21 / 25, Resonance 19 / 16, Tuning 13 / 22, Ignition 11 / 13, Exchanger — / 7, Thermostat, Foreman: QoL. Every upgrade should stay above ~5%; none should dwarf the rest.
 - **Automation is a progression.** Autobuyers (Automators, 1 Shard) buy max for every Engine and Tempo, starting every 3s and 10% faster each Collapse (floor: one tick, 0.05s). *Overclock* (3) makes them 3× faster; *Foreman* (4) adds Overdrive/Lattice autobuyers. The Engines toolbar shows the current and next interval. Against a player holding M: 2.9× slower at Collapse 5–10, 1.8× at 20, 1.04× by 35. They start as an idle helper and end up matching active play, so late runs are about decisions, not holding a key.
-- *Momentum* is capped at ×3 (uncapped it was ×6 on a slow run, 62% alone). *Resonance* is "Overdrives ×2.25 instead of ×2" (the old unspent-Shards version was worth 0% because Shards get spent). *Latticeworks* keeps Overdrives through a Lattice; without it, Lattice is skipped once runs are under ~2 min.
+- *Momentum* is capped at ×3 (uncapped it was ×6 on a slow run, 62% alone). *Resonance* is "Overdrives ×2.25 instead of ×2" (the old unspent-Shards version was worth 0% because Shards get spent). *Latticeworks* keeps up to 4 Overdrives through a Lattice, so Engines V–VIII stay unlocked but the extra ×2s still reset. Without it, Lattice is skipped once runs are under ~2 min. With it, Lattice routes are 15–25% faster than skipping (Collapse 15–30), in line with other upgrades. Keeping every Overdrive tested about the same but removed the visible cost.
 - **Next:** Collapse **Trials** (challenges whose rewards include autobuyer upgrades), autobuyer intervals/bulk, auto-Collapse, and a Shard-powered second generator family. Trials can use Heat rules (no venting, Heat never decays, …).
 
 ### The twist: Heat + branching prestige
