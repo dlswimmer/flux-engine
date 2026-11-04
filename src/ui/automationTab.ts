@@ -5,7 +5,6 @@ import {
   autobuyInterval,
   hasEngineAutobuyers,
   hasResetAutobuyers,
-  isBuyingPaused,
   nextAutobuyInterval,
 } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
@@ -153,12 +152,7 @@ export function automationTab(): View {
           (shardUpgrades.has("overclock") ? " Overclocked ×3." : ""),
       );
       setVisible(paused, areResetsPaused());
-      setText(
-        paused,
-        isBuyingPaused()
-          ? "Paused: you can Collapse. Autobuyers wait so they don't spend you back below the Horizon."
-          : "Auto-resets paused: you can Collapse. Engine and Tempo buying continues (more Flux, more Shards).",
-      );
+      setText(paused, "You can Collapse, so auto Overdrive and Lattice are paused. Engine and Tempo buying carries on.");
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());
       setVisible(resets.root, hasEngineAutobuyers());

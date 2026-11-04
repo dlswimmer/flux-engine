@@ -34,5 +34,6 @@ export function resetForCollapse() {
   state.lattices = 0;
   state.overdrives = minOverdrives();
   state.collapse.time = 0;
+  state.collapse.peakFlux = D(0);
   resetHeat();
 }

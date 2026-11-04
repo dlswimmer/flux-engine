@@ -135,13 +135,16 @@ export function capAtHorizon() {
   if (!isBreached() && state.flux.gt(HORIZON)) state.flux = HORIZON;
 }
 
-export const canCollapse = () => state.flux.gte(HORIZON);
+// Based on the most Flux reached this Collapse, not current Flux: buying (by hand or by
+// autobuyer) and Overdrive/Lattice resets spend Flux, and none of that should take a
+// Collapse away or shrink its Shards.
+export const canCollapse = () => state.collapse.peakFlux.gte(HORIZON);
 export const isCollapseUnlocked = () => state.collapse.count > 0 || canCollapse();
 
 export function shardGain(): Decimal {
   if (!canCollapse()) return D(0);
   let gain = isBreached()
-    ? Decimal.pow(10, state.flux.log10().div(HORIZON_LOG).sub(0.75))
+    ? Decimal.pow(10, state.collapse.peakFlux.log10().div(HORIZON_LOG).sub(0.75))
     : D(1);
   if (shardUpgrades.has("prism")) gain = gain.mul(2);
   return gain.floor().max(1);
