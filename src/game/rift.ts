@@ -136,7 +136,7 @@ export const riftNodes = new UpgradeSet(
     {
       id: "even-keel",
       name: "Even Keel",
-      desc: "Heat never rises past 60%, so it never slows Flux. All Engines ×2.",
+      desc: "Heat never rises past 60%, so it never slows Flux (and you never Surge). Gain 2× Shards.",
       cost: 5,
       requires: ["head-start", "shard-focus"],
       unlocked: branchOpen("order"),
@@ -144,7 +144,9 @@ export const riftNodes = new UpgradeSet(
     {
       id: "long-burn",
       name: "Long Burn",
-      desc: "Momentum's cap rises from ×3 to ×10.",
+      effect: () => D(longBurnMult()),
+      effectText: (v) => `×${v.toNumber().toFixed(2)}`,
+      desc: "Shard gain grows with time in this Rift: ×(1 + minutes ÷ 10), up to ×3.",
       cost: 10,
       requires: ["even-keel"],
       unlocked: branchOpen("order"),
@@ -169,7 +171,7 @@ export const riftNodes = new UpgradeSet(
     {
       id: "backdraft",
       name: "Backdraft",
-      desc: "Heat no longer slows Flux. Instead it boosts all Engines, up to ×4 at 100%.",
+      desc: "Heat no longer slows Flux. Instead it boosts all Engines, up to ×4 at 100% (and Shards by its square root).",
       cost: 10,
       requires: ["flashpoint"],
       unlocked: branchOpen("entropy"),
@@ -195,13 +197,18 @@ export const spentEssence = (): Decimal =>
 /** Rift-tree multiplier on every Engine. */
 export function riftEngineMult(): Decimal {
   let mult = riftNodes.effect("rift-lens");
-  if (hasNode("even-keel")) mult = mult.mul(2);
   // Uses the draining bar during a Surge, so the Heat you vent keeps burning instead of the
   // bonus vanishing the moment you vent.
   if (hasNode("backdraft")) mult = mult.mul(1 + (3 * displayedHeat()) / 100);
   return mult;
 }
 
+export const longBurnMult = () => Math.min(3, 1 + state.rift.time / 600);
+
 export function riftShardMult(): number {
-  return (hasNode("shard-focus") ? 2 : 1) * (hasNode("self-winding") || hasNode("chain-reaction") ? 2 : 1);
+  let mult = (hasNode("shard-focus") ? 2 : 1) * (hasNode("self-winding") || hasNode("chain-reaction") ? 2 : 1);
+  // ×2, not ×1.5: capping Heat also gives up Surges, which pay Shards after Breach.
+  if (hasNode("even-keel")) mult *= 2;
+  if (hasNode("long-burn")) mult *= longBurnMult();
+  return mult;
 }

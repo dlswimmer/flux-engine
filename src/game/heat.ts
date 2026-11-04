@@ -54,6 +54,17 @@ export const isSurging = () => state.heat.surgeTime > 0;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 
 /**
+ * After Breach, Shard gain × √(Surge) (and × √(Backdraft's Heat bonus)). Engine multipliers
+ * barely move Shards past the Horizon, so without this Heat (and the Entropy branch) didn't
+ * matter once Breached.
+ */
+export function heatShardMult(): number {
+  let mult = Math.sqrt(surgeMult());
+  if (hasNode("backdraft")) mult *= Math.sqrt(1 + (3 * displayedHeat()) / 100);
+  return mult;
+}
+
+/**
  * What the Heat bar shows. Real Heat drops to 0 on venting (and stays frozen during the
  * Surge); the bar instead drains from the vented level over the Surge, so venting reads
  * as heat pouring out rather than vanishing. Display only: game logic uses state.heat.amount.

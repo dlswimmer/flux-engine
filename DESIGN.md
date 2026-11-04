@@ -15,6 +15,7 @@ npm run playtest        # feel (longest waits), Shard upgrade values, clicking c
 npm run playtest -- automation   # autobuyers vs holding M, Collapse 5–35
 npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrades
 npm run sim -- run 30 idle   # same, never venting Heat
+npm run report                  # whole-game playthroughs per player style (milestone times) + every upgrade's worth
 npm run sim -- rift 15 order target=3 lattices=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
                                        # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
 npm run build
@@ -62,7 +63,8 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 
 ### The twist: Heat + branching prestige
 **Heat (built, unlocks at Collapse 3).**
-- Heat rises toward 100% while Engines run. It fills faster the more tiers are active.
+- Heat rises toward 100% while Engines run. It fills faster the more tiers are active. It **carries over between Collapses** and only a Rift clears it: after Breach the best runs last ~2s, and with a per-Collapse reset Heat never built at all.
+- **After Breach, a Surge also multiplies Shard gain by √(Surge)** (Backdraft's bonus too). Engine multipliers barely move Shards past the Horizon (a ×2 is ~×1.06), so without this Heat, Thermostat and Heat Exchanger were worth 0% of Shard income after Breach; now Thermostat is ~32% and Exchanger ~13%.
 - Above 60%, Flux output drops gently, down to ×0.8 at 100%. This only hits Engine I, so idle play stays fully viable.
 - **Vent** (V) resets Heat and starts a **Surge**: all Engines ×(1 + 3·(Heat/100)²) for 15 seconds, so ×1.75 at 50%, ×2.7 at 75%, ×4 at 100%.
 - You can't vent during a Surge. Earlier tuning let tiny vents chain into a permanent boost, which made mashing V optimal. The quadratic curve keeps small vents weak for the same reason.
@@ -71,10 +73,10 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - Sim result: active runs are about 20% faster than idle (Collapse 6: 3m08s vs 3m56s; 15 Collapses in 1h09m vs 1h15m). That's worth pressing V, and idle is still fine. More push-your-luck depth belongs in the Entropy branch.
 
 **Branching prestige (built, Rift tree).** Each branch takes a stance on Heat:
-- **Order** (idle): *Even Keel* caps Heat at 60% (never throttles, never Surges) and gives ×2; *Long Burn* raises Momentum's cap to ×10; *Self-Winding* doubles autobuyer speed and Shards.
+- **Order** (idle): *Even Keel* caps Heat at 60% (never throttles, never Surges) and gives ×2 Shards; *Long Burn* gives Shards ×(1 + Rift minutes ÷ 10), up to ×3; *Self-Winding* doubles autobuyer speed and Shards. (Even Keel was "Engines ×2" and Long Burn "Momentum cap ×10": both were worth ×1.00-1.03 Shard income after Breach.)
 - **Entropy** (active): *Flashpoint* Surges peak at ×8; *Backdraft* turns Heat into a bonus (up to ×4, following the draining bar during a Surge) instead of a throttle; *Chain Reaction* doubles Surge length, Heat build speed and Shards.
 - Buying the first node of one branch locks the other. "Respec at next Rift" refunds every node.
-- Sim (Rifting at 3 Essence each): Order is stronger early (Rift 5: 4m05s vs 5m08s), Entropy later (Rift 15: 1m32s vs 1m41s); both finish 15 Rifts within 4 minutes of each other.
+- Node value (`npm run report -- rift`, Shards/min, 5-minute test): Order ×1.37 / ×1.26 (grows to ×3 in long Rifts) / ×2.00; Entropy ×1.28 / ×1.44 / ×2.52. Entropy wins short Rifts, Order catches up in long ones.
 
 ### 2 · Rift (built: v1)
 - **Overcharge** (after Breach): repeatable, all Engines ×10 per level, cost 5 × 1.25^level Shards. Reset by a Rift. (At ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice.)
@@ -84,7 +86,17 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - **Milestones**: 1 Rift keeps automation + Kindling/Momentum/Echo/Ignition/Tuning/Gearing (when Rift 1 kept only automation, Rift 2 took twice as long as Rift 1); 2 keeps Cascade/Exchanger/Resonance/Latticeworks; 3 keeps Prism/Breach.
 - **Tree**: Rift Lens (1, all Engines ×(total Essence + 1)^0.75), Head Start (2, start each Collapse with 4 Overdrives), Shard Focus (3, Shards ×2), then a branch at 5 / 10 / 20. 41 Essence for everything.
 - **Self-Collapse** (Shard upgrade, 6, needs Foreman) unlocks auto-Collapse ("when it gives at least N Shards"). Before it existed, the sim needed ~280 manual Collapses before the first Rift.
-- **Pacing** (sim): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
+- **Milestones** (`npm run report -- milestones`, fresh save, Rifting at 4 Essence):
+
+  | Player | Collapse 1 | Automators | Breach | Rift 1 | Rift 5 |
+  | --- | --- | --- | --- | --- | --- |
+  | Active (acts every 1s, vents at 75%) | 21m | 43m | 1h17m | 1h29m | 1h51m |
+  | Active, no manual venting | 21m | 43m | 1h28m | 1h39m | 2h01m |
+  | Casual (acts every 10s, auto-Collapse) | 40m | 1h50m | 2h57m | 3h31m | 4h04m |
+  | Rift ASAP / Rift at 8 Essence | | | | 1h22m / 1h36m | 1h44m / 1h59m (tree done) |
+
+  Buying Automators first (instead of cheapest-first) helps casual players ~10 min but costs active ones ~20 (early autobuyers are slower than a clicking player). Soft spot: casual players are 2× slower before Automators.
+- **Pacing** (sim, earlier tuning run): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
 - **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
 
 ### 3 · Ascension and beyond (planned)

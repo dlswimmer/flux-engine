@@ -3,11 +3,12 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
-import { hasNode, riftShardMult } from "./rift";
+import { riftShardMult } from "./rift";
+import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
 
-/** Momentum stops growing here; uncapped it was worth ×6 on a slow first run. Long Burn (Rift) raises it. */
-const momentumCap = () => (hasNode("long-burn") ? 10 : 3);
+/** Momentum stops growing here; uncapped it was worth ×6 on a slow first run. */
+const MOMENTUM_CAP = 3;
 
 /** Flux can't go past the Horizon until "Breach" is bought; reaching it lets you Collapse. */
 export const HORIZON = D("1e200");
@@ -25,9 +26,9 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "momentum",
       name: "Momentum",
-      desc: "Engines gain a bonus that grows with time spent in this Collapse (max ×3, ×10 with Long Burn).",
+      desc: "Engines gain a bonus that grows with time spent in this Collapse (max ×3).",
       cost: 1,
-      effect: () => D(Math.min(momentumCap(), 1 + Math.sqrt(state.collapse.time / 60))),
+      effect: () => D(Math.min(MOMENTUM_CAP, 1 + Math.sqrt(state.collapse.time / 60))),
       effectText: (v) => formatMult(v),
     },
     {
@@ -156,6 +157,8 @@ export function shardGain(): Decimal {
     : D(1);
   if (shardUpgrades.has("prism")) gain = gain.mul(2);
   gain = gain.mul(riftShardMult());
+  // After Breach, Heat pays in Shards too: Engine multipliers barely move Shards (a ×2 is ~×1.06).
+  if (isBreached()) gain = gain.mul(heatShardMult());
   return gain.floor().max(1);
 }
 

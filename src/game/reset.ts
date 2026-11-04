@@ -36,7 +36,7 @@ export function resetForCollapse() {
   state.overdrives = minOverdrives();
   state.collapse.time = 0;
   state.collapse.peakFlux = D(0);
-  resetHeat();
+  // Heat carries over: after Breach the best runs last ~2s, and Heat (8s to build) never mattered.
 }
 
 // ---------- Test tools (Options → Dev, shown with ?dev) ----------
@@ -72,5 +72,6 @@ export function resetForRift() {
   const kept = keptShardUpgrades();
   state.collapse.upgrades = state.collapse.upgrades.filter((id) => kept.includes(id));
   resetForCollapse();
+  resetHeat();
   state.rift.time = 0;
 }
