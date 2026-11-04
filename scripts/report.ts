@@ -119,7 +119,9 @@ export function playthrough(
       buyMaxOvercharge();
     };
     spend();
-    if (canCollapse() && !(p.every > 1 && shardUpgrades.has("selfcollapse"))) {
+    // Before Self-Collapse the bot Collapses by hand; after it, auto-Collapse (Shards/min peak,
+    // checked every tick) does it, like a real player would set it up.
+    if (canCollapse() && !shardUpgrades.has("selfcollapse")) {
       const rate = shardGain().toNumber() / state.collapse.time;
       if (!isBreached() || rate < bestRate * 0.97) {
         doCollapse();
@@ -137,8 +139,8 @@ export function playthrough(
       a.overdrive = a.lattice = true;
       a.overdriveMax = 10;
       a.latticeMax = latMax;
-      // Active players time Collapses for Shards/min; casual ones leave it to auto-Collapse.
-      a.collapse = p.every > 1;
+      a.collapse = true;
+      a.collapseShards = 0;
     } else if (state.lattices < latMax && canLattice()) doLattice();
     else if (state.overdrives < 8 && canOverdrive()) doOverdrive();
     maxAll();

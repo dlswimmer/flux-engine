@@ -15,7 +15,7 @@ import { UpgradeSet } from "./upgrades";
 // Shards, and Shards still come from depth, so everything still feeds in, just smoothly.
 
 /** Overcharge level needed to Rift. Tuned with `npm run sim -- rift`. */
-export const RIFT_OVERCHARGE = 20;
+export const RIFT_OVERCHARGE = 24;
 /** Every this many Overcharge levels past the requirement doubles Essence. */
 const LEVELS_PER_DOUBLING = 2;
 

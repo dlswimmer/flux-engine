@@ -1,5 +1,5 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { canCollapse, doCollapse, shardGain, shardUpgrades } from "./collapse";
+import { canCollapse, doCollapse, isBreached, shardGain, shardUpgrades } from "./collapse";
 import { hasNode } from "./rift";
 import { buyMaxEngine } from "./engines";
 import { canLattice, doLattice } from "./lattice";
@@ -41,20 +41,48 @@ export const nextAutobuyInterval = () =>
  */
 export const areResetsPaused = () => state.automation.pauseResetsAtHorizon && canCollapse();
 
+// ---------- Auto-Collapse ----------
+// With a Shard target set, Collapse once the next Collapse is worth that much. Without one,
+// Collapse when this run's Shards per second has peaked. "As soon as you reach the Horizon"
+// was the old blank setting, and after Breach it earned 2-4× less than good timing: it
+// cashed in before the Surge and depth bonuses built up.
+
+let bestRate = 0;
+let rateRun = "";
+
+function autoCollapseReady(): boolean {
+  const auto = state.automation;
+  if (!hasAutoCollapse() || !auto.collapse || !canCollapse()) return false;
+  if (auto.collapseShards > 0) return shardGain().gte(auto.collapseShards);
+  if (!isBreached()) return true; // gain is fixed before Breach: no reason to wait
+  const run = `${state.rift.count}:${state.collapse.count}`;
+  if (run !== rateRun) {
+    rateRun = run;
+    bestRate = 0;
+  }
+  const rate = shardGain().toNumber() / Math.max(state.collapse.time, 0.05);
+  if (rate >= bestRate) {
+    bestRate = rate;
+    return false;
+  }
+  return rate < bestRate * 0.97;
+}
+
 let timer = 0;
 
 export function runAutomation(dt: number) {
+  // Every tick, not on the autobuyer timer: after Breach a run lasts ~2s, so reacting a
+  // second late (the timer right after a Rift) wastes half of it.
+  if (autoCollapseReady()) {
+    doCollapse();
+    return;
+  }
   timer += dt;
   const interval = autobuyInterval();
   if (timer + 1e-9 < interval) return;
   // Keep the remainder so the average rate is right, but never bank more than one extra activation.
   timer = Math.min(timer - interval, interval);
   const auto = state.automation;
-  // Auto-Collapse (Self-Collapse) goes first: once it's worth it, nothing else matters.
-  if (hasAutoCollapse() && auto.collapse && canCollapse() && shardGain().gte(auto.collapseShards)) {
-    doCollapse();
-    return;
-  }
   if (hasEngineAutobuyers()) {
     // Tempo first, like Max All: it boosts every tier.
     if (auto.tempo) buyMaxTempo();

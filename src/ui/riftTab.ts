@@ -106,7 +106,7 @@ export function riftTab(): View {
       fill.style.width = `${Math.min(100, (oc / RIFT_OVERCHARGE) * 100)}%`;
       setText(
         progressLabel,
-        canRift() ? `Open · every 4 more Overcharge: 2× Essence` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
+        canRift() ? `Open · every 2 more Overcharge: 2× Essence` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
       );
       setText(
         button,

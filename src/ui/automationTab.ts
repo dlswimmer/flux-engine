@@ -209,7 +209,7 @@ export function automationTab(): View {
         name: "Auto-Collapse",
         get: () => state.automation.collapse,
         set: (v) => (state.automation.collapse = v),
-        note: () => "blank = as soon as you reach the Horizon",
+        note: () => "blank = when Shards per minute peaks (best for most runs)",
         settings: h("label", { class: "auto-setting" }, "When it gives at least", collapseAt, "Shards"),
       }),
     ],
