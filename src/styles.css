@@ -154,6 +154,18 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
   background: linear-gradient(90deg, #3182ce, var(--flux) 35%, var(--shard) 60%, var(--danger));
 }
 .heat-cover { position: absolute; top: 0; right: 0; bottom: 0; background: var(--bg-sunken); transition: width 0.15s linear; }
+/* Venting: the remaining heat shimmers as it drains out over the Surge */
+.heat-bar.venting::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, transparent 0 10px, rgba(255, 255, 255, 0.18) 10px 20px);
+  background-size: 200% 100%;
+  animation: vent-flow 0.8s linear infinite;
+}
+.heat-bar.venting { box-shadow: 0 0 10px 1px var(--shard-dim); }
+@keyframes vent-flow { to { background-position: -46px 0; } }
+@media (prefers-reduced-motion: reduce) { .heat-bar.venting::before { animation: none; } }
 .heat-throttle-marker, .heat-auto-marker { position: absolute; top: 0; bottom: 0; width: 2px; }
 .heat-throttle-marker { background: var(--danger); opacity: 0.7; }
 .heat-auto-marker { background: var(--text); opacity: 0.6; }
@@ -275,7 +287,13 @@ h3 .auto-badge { margin-left: 8px; }
 .switch:focus-visible { outline: 2px solid var(--flux); outline-offset: 2px; }
 
 /* Stats & options */
+.stats-tab { display: flex; flex-direction: column; gap: 12px; }
 .stats-tab table { border-collapse: collapse; width: 100%; max-width: 520px; }
+.stats-tab .history th { color: var(--text-dim); font-size: 12px; text-align: right; padding: 4px 0; }
+.stats-tab .history th:first-child, .stats-tab .history td:first-child { text-align: left; color: var(--text-dim); }
+.stats-tab .history td { padding: 4px 0; }
+.stats-tab .history tr.best td { color: var(--flux); }
+.history-average { margin: 8px 0 0; color: var(--text-dim); font-size: 13px; }
 .stats-tab th { text-align: left; font-weight: normal; color: var(--text-dim); padding: 6px 0; }
 .stats-tab td { text-align: right; font-family: var(--mono); }
 .options-tab { display: flex; flex-direction: column; gap: 12px; }

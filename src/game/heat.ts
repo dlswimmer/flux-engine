@@ -50,6 +50,17 @@ export const surgeDuration = () => SURGE_DURATION * (shardUpgrades.has("exchange
 export const isSurging = () => state.heat.surgeTime > 0;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 
+/**
+ * What the Heat bar shows. Real Heat drops to 0 on venting (and stays frozen during the
+ * Surge); the bar instead drains from the vented level over the Surge, so venting reads
+ * as heat pouring out rather than vanishing. Display only: game logic uses state.heat.amount.
+ */
+export function displayedHeat(): number {
+  const heat = state.heat;
+  if (!isSurging()) return heat.amount;
+  return heat.ventedFrom * Math.min(1, heat.surgeTime / surgeDuration());
+}
+
 /** No venting mid-Surge, so Surges can't be chained into a permanent boost. */
 export const canVent = () => isHeatUnlocked() && !isSurging() && state.heat.amount >= MIN_VENT;
 
@@ -58,6 +69,7 @@ export function vent(): boolean {
   if (!canVent()) return false;
   const heat = state.heat;
   heat.surgeMult = surgeMultFor(heat.amount);
+  heat.ventedFrom = heat.amount;
   heat.surgeTime = surgeDuration();
   heat.amount = 0;
   heat.vents++;

@@ -8,6 +8,18 @@ export const ENGINE_COUNT = 8;
  */
 export const SAVE_VERSION = 1;
 
+/** One finished Collapse, for the recent-runs table on the Stats tab. */
+export interface CollapseRecord {
+  /** Which Collapse this was (1 = first). */
+  number: number;
+  /** Game seconds the run took. */
+  time: number;
+  shards: Decimal;
+}
+
+/** How many recent Collapses the save keeps. */
+export const COLLAPSE_HISTORY = 10;
+
 export interface EngineState {
   amount: Decimal;
   bought: number;
@@ -30,6 +42,8 @@ export interface GameState {
     time: number;
     bestTime: number;
     upgrades: string[];
+    /** Most recent last, at most COLLAPSE_HISTORY. */
+    history: CollapseRecord[];
   };
 
   // Twist: Engines build Heat; venting it trades the heat for a temporary Surge.
@@ -37,6 +51,8 @@ export interface GameState {
     amount: number;
     surgeTime: number;
     surgeMult: number;
+    /** Heat at the moment of the last vent; the bar drains from here during the Surge. */
+    ventedFrom: number;
     vents: number;
     autoVent: boolean;
     autoVentAt: number;
@@ -69,12 +85,13 @@ export function defaultState(): GameState {
     overdrives: 0,
     lattices: 0,
 
-    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, upgrades: [] },
+    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, upgrades: [], history: [] },
 
     heat: {
       amount: 0,
       surgeTime: 0,
       surgeMult: 1,
+      ventedFrom: 0,
       vents: 0,
       autoVent: true,
       autoVentAt: 70,

@@ -24,6 +24,7 @@ import {
   HEAT_MAX,
   THROTTLE_START,
   canVent,
+  displayedHeat,
   fluxThrottle,
   hasThermostat,
   isHeatUnlocked,
@@ -206,8 +207,10 @@ function heatPanel(): View {
       setVisible(root, isHeatUnlocked());
       if (!isHeatUnlocked()) return;
       const heat = state.heat;
-      cover.style.width = `${HEAT_MAX - heat.amount}%`;
-      setText(label, `${heat.amount.toFixed(0)}%`);
+      const shown = displayedHeat();
+      cover.style.width = `${HEAT_MAX - shown}%`;
+      setText(label, isSurging() ? `venting ${shown.toFixed(0)}%` : `${shown.toFixed(0)}%`);
+      setClass(bar, "venting", isSurging());
 
       const throttle = fluxThrottle();
       const parts = [
@@ -216,7 +219,9 @@ function heatPanel(): View {
           : "",
         throttle < 1
           ? `Overheating: Flux output ×${throttle.toFixed(2)}.`
-          : `Engines heat up as they run. Above ${THROTTLE_START}% Flux output drops.`,
+          : isSurging()
+            ? ""
+            : `Engines heat up as they run. Above ${THROTTLE_START}% Flux output drops.`,
         hasThermostat() && heat.autoVent ? `Auto-vent at ${heat.autoVentAt}%.` : "",
       ];
       setText(status, parts.filter(Boolean).join(" "));
