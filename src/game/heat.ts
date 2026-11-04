@@ -1,0 +1,65 @@
+import { ENGINE_COUNT, state } from "../core/state";
+import { shardUpgrades } from "./collapse";
+
+// Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
+// throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
+// active payoff is the Surge: venting resets Heat and boosts every Engine for a while,
+// scaled by how hot you vented.
+
+export const HEAT_MAX = 100;
+export const THROTTLE_START = 60;
+const THROTTLE_FLOOR = 0.8;
+const FILL_TIME = 20; // time constant in seconds with all 8 tiers running
+const MIN_VENT = 5;
+const SURGE_DURATION = 15;
+const HEAT_UNLOCK_COLLAPSES = 3;
+
+export const isHeatUnlocked = () => state.collapse.count >= HEAT_UNLOCK_COLLAPSES;
+export const hasThermostat = () => shardUpgrades.has("thermostat");
+
+const activeTiers = () => state.engines.filter((e) => e.amount.gt(0)).length;
+
+export function updateHeat(dt: number) {
+  if (!isHeatUnlocked()) return;
+  const heat = state.heat;
+  const rate = activeTiers() / ENGINE_COUNT / FILL_TIME;
+  // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
+  heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * dt));
+  heat.surgeTime = Math.max(0, heat.surgeTime - dt);
+  if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
+}
+
+/** Multiplier on Flux output from overheating: 1 up to THROTTLE_START, down to THROTTLE_FLOOR at max. */
+export function fluxThrottle(): number {
+  const h = state.heat.amount;
+  if (!isHeatUnlocked() || h <= THROTTLE_START) return 1;
+  return 1 - ((1 - THROTTLE_FLOOR) * (h - THROTTLE_START)) / (HEAT_MAX - THROTTLE_START);
+}
+
+const surgeMax = () => (shardUpgrades.has("exchanger") ? 5 : 4);
+const SURGE_CURVE = 2; // >1 rewards venting hot: tiny frequent vents are weak
+
+/** Surge strength for venting at a given Heat: ×1 at 0, up to surgeMax() at 100. */
+export const surgeMultFor = (heat: number) => 1 + (surgeMax() - 1) * (heat / HEAT_MAX) ** SURGE_CURVE;
+export const surgeDuration = () => SURGE_DURATION * (shardUpgrades.has("exchanger") ? 1.5 : 1);
+export const isSurging = () => state.heat.surgeTime > 0;
+export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
+
+/** No venting mid-Surge, so Surges can't be chained into a permanent boost. */
+export const canVent = () => isHeatUnlocked() && !isSurging() && state.heat.amount >= MIN_VENT;
+
+/** Dump all Heat into a fresh Surge. */
+export function vent(): boolean {
+  if (!canVent()) return false;
+  const heat = state.heat;
+  heat.surgeMult = surgeMultFor(heat.amount);
+  heat.surgeTime = surgeDuration();
+  heat.amount = 0;
+  heat.vents++;
+  return true;
+}
+
+export function resetHeat() {
+  state.heat.amount = 0;
+  state.heat.surgeTime = 0;
+}
