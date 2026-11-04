@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { D } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
@@ -27,6 +28,7 @@ export function doOverdrive(): boolean {
   state.overdrives++;
   state.stats.overdrives++;
   resetForOverdrive();
+  emit("overdrive");
   return true;
 }
 

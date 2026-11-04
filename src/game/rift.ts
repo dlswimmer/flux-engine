@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { D, Decimal } from "../lib/decimal";
 import { RIFT_HISTORY, state } from "../core/state";
 import { isBreached } from "./collapse";
@@ -46,6 +47,7 @@ export function doRift(): boolean {
     rift.respec = false;
   }
   resetForRift();
+  emit("rift");
   return true;
 }
 

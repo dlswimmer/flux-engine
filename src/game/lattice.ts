@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForLattice } from "./reset";
@@ -27,6 +28,7 @@ export function doLattice(): boolean {
   state.lattices++;
   state.stats.lattices++;
   resetForLattice();
+  emit("lattice");
   return true;
 }
 

@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { D, Decimal } from "../lib/decimal";
 import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
@@ -198,6 +199,7 @@ export function doCollapse(): boolean {
   ].slice(-COLLAPSE_HISTORY);
   state.collapse.bestTime = Math.min(state.collapse.bestTime, state.collapse.time);
   resetForCollapse();
+  emit("collapse");
   return true;
 }
 

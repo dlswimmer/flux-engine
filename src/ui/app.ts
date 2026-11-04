@@ -8,6 +8,7 @@ import { buyMaxTempo } from "../game/tempo";
 import { actionBar } from "./actionBar";
 import { automationTab, isAutomationUnlocked } from "./automationTab";
 import { collapseTab } from "./collapseTab";
+import { engineRoomTab } from "./engineRoom";
 import { riftTab } from "./riftTab";
 import { canRift, doRift, isRiftUnlocked } from "../game/rift";
 import { h, keyHint, setClass, setVisible, type View } from "./dom";
@@ -26,6 +27,8 @@ interface Tab {
   view: View;
 }
 
+const room = engineRoomTab(() => state.ui.tab === "room");
+
 // New layers register a tab here.
 const TABS: Tab[] = [
   { id: "engines", label: "Engines", unlocked: () => true, view: enginesTab() },
@@ -33,6 +36,7 @@ const TABS: Tab[] = [
   { id: "automation", label: "Automation", short: "Auto", unlocked: isAutomationUnlocked, view: automationTab() },
   { id: "rift", label: "Rift", unlocked: isRiftUnlocked, view: riftTab() },
   { id: "stats", label: "Stats", unlocked: () => true, view: statsTab() },
+  { id: "room", label: "Engine Room", short: "Room", unlocked: () => true, view: room },
   { id: "options", label: "Options", unlocked: () => true, view: optionsTab() },
 ];
 
@@ -88,6 +92,7 @@ export function mountUI(root: HTMLElement) {
       setVisible(tab.view.root, tab === active);
     });
     active.view.update();
+    if (active.id !== "room") room.leave();
     setVisible(bar.root, active.id === "engines");
     if (active.id === "engines") bar.update();
   };

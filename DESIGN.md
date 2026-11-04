@@ -105,6 +105,14 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 ### 3 · Ascension and beyond (planned)
 - Each new layer follows the same shape: a currency, an upgrade set, its own Trials, a QoL milestone track, and one new *mechanic*, not just bigger numbers.
 
+## Engine Room (ambient view)
+A tab that draws the machine from the live game state, as a screensaver/idle view (`ui/engineRoom.ts`):
+- **Rings** = Engines I-VIII (inside out), spinning with each Engine's output (log scale); locked Engines are dashed. **Particles** flow inward ring to ring and into the **core** (Flux), which grows toward the Horizon and becomes a black **event horizon** with a turning accretion ring once you can Collapse (faster after Breach).
+- **Heat** tints the whole scene teal → amber → red; the background turns violet as Overcharge nears the Rift.
+- **Events** come from `core/events.ts` (`emit`/`on`; game logic only emits, so sims are unaffected): Overdrive = pulse ring, Lattice = triangular grid flash, Vent = steam, Collapse = implosion + flash, Rift = violet tear. Only played while you're watching.
+- Tap to hide the numbers; Full screen (CSS immersive mode, so it works on iPhones too, plus the Fullscreen API where allowed); Keep screen on (Screen Wake Lock, re-taken after the page is hidden). Respects reduced motion (no particles, slow rotation). Only animates while its tab is showing.
+- **Each new layer should add its own visual** here (e.g. Ascension).
+
 ## Mobile
 Phones are a first-class target (≤640px):
 - **Layout:** the header is sticky and compact, so Flux and the Horizon bar stay visible. Tabs move to a bottom bar for thumb reach. Engine rows are two short lines.

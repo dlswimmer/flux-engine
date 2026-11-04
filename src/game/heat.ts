@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
@@ -87,6 +88,7 @@ export function vent(): boolean {
   heat.surgeTime = surgeDuration();
   heat.amount = 0;
   heat.vents++;
+  emit("vent");
   return true;
 }
 
