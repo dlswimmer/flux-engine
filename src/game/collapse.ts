@@ -192,7 +192,8 @@ export function collapseEngineMult(): Decimal {
 
 const OVERCHARGE_BASE_COST = 5;
 const OVERCHARGE_COST_GROWTH = 1.25;
-const OVERCHARGE_MULT = 2;
+/** ×10: at ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice. */
+const OVERCHARGE_MULT = 10;
 
 export const isOverchargeUnlocked = () => isBreached();
 // Exact for normal levels: Decimal.pow(2, 13) comes out as 8191.99..., shown as ×8,191.

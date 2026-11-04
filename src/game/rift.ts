@@ -5,23 +5,27 @@ import { displayedHeat } from "./heat";
 import { resetForRift } from "./reset";
 import { UpgradeSet } from "./upgrades";
 
-// Layer 2: the Rift. Push Flux far enough past the Horizon in one Collapse and you can tear
-// the Rift open: it resets the whole Collapse layer (Shards, Shard upgrades, Overcharge) for
-// Essence, spent on a skill tree that forks into Order (idle) and Entropy (active).
+// Layer 2: the Rift. Overcharge the Engines far enough and the Rift tears open: it resets
+// the whole Collapse layer (Shards, Shard upgrades, Overcharge) for Essence, spent on a skill
+// tree that forks into Order (idle) and Entropy (active).
+//
+// Gated on Overcharge level, not Flux depth. Depth past the Horizon reacts violently to every
+// multiplier (one extra Lattice was worth ~30 orders of magnitude, and a Tempo loop once made
+// it infinite), so a depth threshold was either a wall or trivial. Overcharge is bought with
+// Shards, and Shards still come from depth, so everything still feeds in, just smoothly.
 
-/** Peak Flux (this Collapse) needed to Rift. Tuned with `npm run sim -- rift`. */
-export const RIFT_THRESHOLD = D("1e350");
-const RIFT_LOG = RIFT_THRESHOLD.log10().toNumber();
-/** Every this many orders of magnitude past the threshold doubles Essence. */
-const ESSENCE_DOUBLING = 24;
+/** Overcharge level needed to Rift. Tuned with `npm run sim -- rift`. */
+export const RIFT_OVERCHARGE = 20;
+/** Every this many Overcharge levels past the requirement doubles Essence. */
+const LEVELS_PER_DOUBLING = 4;
 
 export const isRiftUnlocked = () => isBreached() || state.rift.count > 0;
-export const canRift = () => state.collapse.peakFlux.gte(RIFT_THRESHOLD);
+export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
 
 export function essenceGain(): Decimal {
   if (!canRift()) return D(0);
-  const over = state.collapse.peakFlux.log10().toNumber() - RIFT_LOG;
-  return D(2).pow(over / ESSENCE_DOUBLING).floor().max(1);
+  const over = state.collapse.overcharge - RIFT_OVERCHARGE;
+  return D(2).pow(over / LEVELS_PER_DOUBLING).floor().max(1);
 }
 
 export function doRift(): boolean {

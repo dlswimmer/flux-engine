@@ -7,6 +7,17 @@ const BASE_COST = 1e3;
 const COST_GROWTH = 8;
 const BASE_FACTOR = 1.1;
 
+/**
+ * Past the Horizon each Tempo level costs ×4096 instead of ×8. A level boosts all 8 Engine
+ * tiers, so once Lattices push the factor to ~1.35 a level compounds to more growth than its
+ * ×8 price and Tempo pays for itself forever: after Breach, 6 Lattices took Flux to
+ * e(2.6 trillion) in a minute. At ×4096 no realistic factor can outrun its cost.
+ */
+const SCALED_COST_GROWTH = 4096;
+/** First level whose price is past the Horizon (1e3 × 8^219 ≈ 6e200). */
+const SCALING_START = 219;
+const SCALED_BASE = D(BASE_COST).mul(D(COST_GROWTH).pow(SCALING_START));
+
 /** Tempo unlocks once the player owns their first Engine II. */
 export const isTempoUnlocked = () =>
   state.engines[1].bought > 0 || state.overdrives > 0 || state.lattices > 0 || state.collapse.count > 0;
@@ -20,7 +31,10 @@ export function tempoFactor(): Decimal {
 
 export const tempoMult = () => tempoFactor().pow(state.tempo);
 
-export const tempoCost = () => D(BASE_COST).mul(D(COST_GROWTH).pow(state.tempo));
+export const tempoCost = () =>
+  state.tempo < SCALING_START
+    ? D(BASE_COST).mul(D(COST_GROWTH).pow(state.tempo))
+    : SCALED_BASE.mul(D(SCALED_COST_GROWTH).pow(state.tempo - SCALING_START));
 
 export const canBuyTempo = () => isTempoUnlocked() && state.flux.gte(tempoCost());
 
@@ -31,15 +45,22 @@ export function buyTempo(): boolean {
   return true;
 }
 
-export function buyMaxTempo(): number {
-  if (!isTempoUnlocked()) return 0;
-  const count = Decimal.affordGeometricSeries(state.flux, BASE_COST, COST_GROWTH, state.tempo)
-    .floor()
-    .toNumber();
+/** Buy as many levels as Flux allows from one geometric price segment, up to `limit`. */
+function buySegment(base: Decimal, growth: number, offset: number, limit: number): number {
+  const affordable = Decimal.affordGeometricSeries(state.flux, base, growth, offset).floor().toNumber();
+  const count = Math.min(affordable, limit);
   if (!(count > 0) || !Number.isFinite(count)) return 0;
-  state.flux = state.flux
-    .sub(Decimal.sumGeometricSeries(count, BASE_COST, COST_GROWTH, state.tempo))
-    .max(0);
+  state.flux = state.flux.sub(Decimal.sumGeometricSeries(count, base, growth, offset)).max(0);
   state.tempo += count;
   return count;
+}
+
+export function buyMaxTempo(): number {
+  if (!isTempoUnlocked()) return 0;
+  let bought = 0;
+  if (state.tempo < SCALING_START)
+    bought += buySegment(D(BASE_COST), COST_GROWTH, state.tempo, SCALING_START - state.tempo);
+  if (state.tempo >= SCALING_START)
+    bought += buySegment(SCALED_BASE, SCALED_COST_GROWTH, state.tempo - SCALING_START, Infinity);
+  return bought;
 }

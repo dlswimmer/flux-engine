@@ -176,6 +176,8 @@ function riftCampaign(rifts: number, branch: "order" | "entropy", ventAt: number
   const a = state.automation;
   a.overdrive = true;
   a.lattice = true;
+  const lat = process.argv.find((x) => x.startsWith("lattices="));
+  if (lat) a.latticeMax = lat.slice(9) === "all" ? Infinity : Number(lat.slice(9));
   a.collapse = false; // the bot decides when to Collapse
   let sinceRift = 0;
   let collapsesThisRift = 0;

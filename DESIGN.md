@@ -15,7 +15,7 @@ npm run playtest        # feel (longest waits), Shard upgrade values, clicking c
 npm run playtest -- automation   # autobuyers vs holding M, Collapse 5–35
 npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrades
 npm run sim -- run 30 idle   # same, never venting Heat
-npm run sim -- rift 15 order target=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
+npm run sim -- rift 15 order target=3 lattices=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
                                        # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
 npm run build
 ```
@@ -77,12 +77,14 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - Sim (Rifting at 3 Essence each): Order is stronger early (Rift 5: 4m05s vs 5m08s), Entropy later (Rift 15: 1m32s vs 1m41s); both finish 15 Rifts within 4 minutes of each other.
 
 ### 2 · Rift (built: v1)
-- **Overcharge** (after Breach): repeatable, all Engines ×2 per level, cost 5 × 1.25^level Shards. Each level pushes Flux ~5 orders of magnitude deeper past the Horizon. Reset by a Rift.
-- **Rift**: needs peak Flux ≥ **e350** in one Collapse. Gives **Essence** = 2^((log10 peak − 350) / 24): 1 at the threshold, doubling every 24 orders of magnitude deeper. Resets Shards, Overcharge and Shard upgrades (except milestone keeps); Collapse count stays (Echo, autobuyer speed).
+- **Overcharge** (after Breach): repeatable, all Engines ×10 per level, cost 5 × 1.25^level Shards. Reset by a Rift. (At ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice.)
+- **Rift**: needs **Overcharge 20**. Gives **Essence** = 2^((Overcharge − 20) / 4): 1 at 20, doubling every 4 levels. Resets Shards, Overcharge and Shard upgrades (except milestone keeps); Collapse count stays (Echo, autobuyer speed).
+- *Why Overcharge, not Flux depth:* v1 gated on peak Flux ≥ e350. Depth past the Horizon reacts violently to every multiplier: one extra Lattice was ~30 orders of magnitude, so the gate was either a wall (Lattice limit 1: never opened in 6h) or trivial (unlimited: 40s after Breach). Overcharge is bought with Shards, which still come from depth, so everything feeds in smoothly.
+- **Tempo past the Horizon** costs ×4096 per level instead of ×8. A Tempo level boosts all 8 tiers, so at ~1.35/level (6 Lattices) it out-grew its ×8 price and paid for itself forever: Flux hit e(2.6 trillion) in a minute and Essence went "infinite". Lattice requirements are also quadratic now (40 + 20L + 10L² Engine VIII), so a run tops out around 3.
 - **Milestones**: 1 Rift keeps automation + Kindling/Momentum/Echo/Ignition/Tuning/Gearing (when Rift 1 kept only automation, Rift 2 took twice as long as Rift 1); 2 keeps Cascade/Exchanger/Resonance/Latticeworks; 3 keeps Prism/Breach.
 - **Tree**: Rift Lens (1, all Engines ×(total Essence + 1)^0.75), Head Start (2, start each Collapse with 4 Overdrives), Shard Focus (3, Shards ×2), then a branch at 5 / 10 / 20. 41 Essence for everything.
 - **Self-Collapse** (Shard upgrade, 6, needs Foreman) unlocks auto-Collapse ("when it gives at least N Shards"). Before it existed, the sim needed ~280 manual Collapses before the first Rift.
-- **Pacing** (sim, Rifting at 3 Essence): Breach ~1h21m, first Rift ~25 min later, the whole tree ~1.5h after Breach. Waiting for bigger Rifts pays, but with diminishing returns (doubling every 8 orders of magnitude made "never Rift" optimal; Rift Lens at ^2 made every Rift after the first take ~10s).
+- **Pacing** (sim): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
 - **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
 
 ### 3 · Ascension and beyond (planned)

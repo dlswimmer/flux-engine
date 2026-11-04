@@ -36,7 +36,7 @@ function overchargePanel(): View {
       if (!isOverchargeUnlocked()) return;
       setText(
         info,
-        `Level ${state.collapse.overcharge}: all Engines ${formatMult(overchargeMult())}. Each level doubles it, pushing Flux deeper past the Horizon. A Rift resets it.`,
+        `Level ${state.collapse.overcharge}: all Engines ${formatMult(overchargeMult())}. Each level is another ×10, pushing Flux deeper past the Horizon. Level 20 opens the Rift (which resets it).`,
       );
       setText(buy, `Overcharge · ${formatInt(overchargeCost())} Shards`);
       setDisabled(buy, !canBuyOvercharge());

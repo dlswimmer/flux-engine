@@ -1,10 +1,9 @@
-import { format, formatCount, formatInt, formatTime } from "../core/format";
+import { formatCount, formatInt, formatTime } from "../core/format";
 import { state } from "../core/state";
-import { HORIZON } from "../game/collapse";
 import {
   NODE_INFO,
   RIFT_MILESTONES,
-  RIFT_THRESHOLD,
+  RIFT_OVERCHARGE,
   canRift,
   chosenBranch,
   doRift,
@@ -74,8 +73,6 @@ export function riftTab(): View {
   const respec = toggle("Respec at next Rift", () => state.rift.respec, (v) => (state.rift.respec = v));
   const respecNote = h("span", { class: "auto-note" });
 
-  const thresholdLog = RIFT_THRESHOLD.log10().toNumber();
-  const horizonLog = HORIZON.log10().toNumber();
 
   const root = h(
     "section",
@@ -105,16 +102,17 @@ export function riftTab(): View {
           (r.count > 0 ? ` · fastest ${formatTime(r.bestTime)}` : ""),
       );
 
-      // Progress toward the Rift threshold, from the Horizon, in orders of magnitude of peak Flux.
-      const peakLog = state.collapse.peakFlux.max(1).log10().toNumber();
-      const pct = Math.min(100, Math.max(0, ((peakLog - horizonLog) / (thresholdLog - horizonLog)) * 100));
-      fill.style.width = `${pct}%`;
-      setText(progressLabel, canRift() ? "The Rift is open" : `Peak Flux this Collapse: e${Math.floor(peakLog)} of e${thresholdLog}`);
+      const oc = state.collapse.overcharge;
+      fill.style.width = `${Math.min(100, (oc / RIFT_OVERCHARGE) * 100)}%`;
+      setText(
+        progressLabel,
+        canRift() ? `Open · every 4 more Overcharge: 2× Essence` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
+      );
       setText(
         button,
         canRift()
           ? `Rift for ${formatCount(essenceGain(), "Essence", "Essence")}${keyHint("R")}`
-          : `Reach ${format(RIFT_THRESHOLD)} Flux in one Collapse to Rift`,
+          : `Reach Overcharge ${RIFT_OVERCHARGE} to Rift`,
       );
       setDisabled(button, !canRift());
 
