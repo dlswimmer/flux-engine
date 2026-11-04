@@ -1,6 +1,8 @@
 import { state } from "../core/state";
 import { exportSave, hardReset, importSave, saveGame } from "../core/save";
 import { devResetRift, devResetShards } from "../game/reset";
+import { formatTime } from "../core/format";
+import { hasBackup, jumpTo, loadMilestoneSaves, restoreBackup } from "./devJumps";
 import { h, setClass, setDisabled, setVisible, toggle, type View } from "./dom";
 import { notify } from "./toast";
 
@@ -12,9 +14,9 @@ const DEV_SPEEDS = [1, 10, 100];
  * A button that needs a second tap within 3s. Lighter than the type-"reset" box: these only
  * touch one layer, and they're dev tools.
  */
-function tapTwice(label: string, act: () => void, done: string): HTMLButtonElement {
+function tapTwice(label: string, act: () => void, done: string, cls = "danger", title?: string): HTMLButtonElement {
   let armedUntil = 0;
-  const button = h("button", { class: "danger" }, label);
+  const button = h("button", { class: cls, title }, label);
   button.addEventListener("click", () => {
     if (Date.now() < armedUntil) {
       armedUntil = 0;
@@ -90,6 +92,24 @@ export function optionsTab(): View {
   const speedButtons = DEV_SPEEDS.map((speed) =>
     h("button", { class: "secondary", onClick: () => (state.options.devSpeed = speed) }, `×${speed}`),
   );
+  const jumpRow = h("div", { class: "button-row" });
+  const restoreButton = tapTwice(
+    "Restore my save",
+    () => {
+      if (!restoreBackup()) notify("No backup to restore");
+    },
+    "Your save is back",
+    "",
+  );
+  const restoreRow = h("div", { class: "button-row" }, restoreButton);
+  if (DEV_MODE)
+    loadMilestoneSaves().then((saves) => {
+      for (const m of saves)
+        jumpRow.append(
+          tapTwice(`${m.name} · ${formatTime(m.time)}`, () => jumpTo(m), `Jumped to ${m.name}`, "secondary", m.desc),
+        );
+    });
+
   const devPanel = h(
     "div",
     { class: "panel" },
@@ -106,6 +126,9 @@ export function optionsTab(): View {
       tapTwice("Reset Shards (keep upgrades)", devResetShards, "Shards and Overcharge reset; upgrades kept"),
       tapTwice("Reset Rift progress", devResetRift, "Essence, Rifts and the Rift tree reset"),
     ),
+    h("p", { class: "dev-note" }, "Jump to a milestone (a save from the sim's player at that point). Your own save is backed up first."),
+    jumpRow,
+    restoreRow,
   );
 
   const root = h(
@@ -135,6 +158,7 @@ export function optionsTab(): View {
     update() {
       for (const t of toggles) t.update();
       setVisible(devPanel, DEV_MODE);
+      if (DEV_MODE) setVisible(restoreRow, hasBackup());
       DEV_SPEEDS.forEach((speed, i) => setClass(speedButtons[i], "active", state.options.devSpeed === speed));
     },
   };

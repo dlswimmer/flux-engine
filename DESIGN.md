@@ -8,7 +8,7 @@ and content.
 
 ```
 npm install
-npm run dev             # http://localhost:5173  (add ?dev, also on github.io, for game speed and test tools: reset Shards or Rift progress without a full wipe)
+npm run dev             # http://localhost:5173  (add ?dev, also on github.io, for game speed and test tools: reset Shards or Rift progress, or jump to a milestone save (your save is backed up; "Restore my save" undoes it))
 npm run sim             # strategy sweep: which first-run route is fastest? (flags exploits)
 npm run sim -- trace    # every reset in one full-route first run
 npm run playtest        # feel (longest waits), Shard upgrade values, clicking cadence
@@ -16,6 +16,7 @@ npm run playtest -- automation   # autobuyers vs holding M, Collapse 5–35
 npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrades
 npm run sim -- run 30 idle   # same, never venting Heat
 npm run report                  # whole-game playthroughs per player style (milestone times) + every upgrade's worth
+npm run report -- devsaves      # regenerate the dev "Jump to milestone" saves (src/dev/milestoneSaves.ts) after balance changes
 npm run sim -- rift 15 order target=3 lattices=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
                                        # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
 npm run build
