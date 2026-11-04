@@ -1,4 +1,5 @@
-import { format, formatInt, formatMult } from "../core/format";
+import { format, formatInt, formatMult, formatTime } from "../core/format";
+import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { hasEngineAutobuyers, hasResetAutobuyers } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
@@ -14,6 +15,7 @@ import {
   engineCost,
   engineGrowthPercent,
   engineMult,
+  fluxPerSecond,
   isEngineUnlocked,
   maxAll,
   toNextMilestone,
@@ -40,6 +42,34 @@ const autoBadge = () => h("span", { class: "auto-badge", title: "Bought automati
 
 export function toggleBuyMode() {
   state.ui.buyMode = state.ui.buyMode === "next" ? "one" : "next";
+}
+
+// How fast Flux is growing in orders of magnitude per second (smoothed). Flux climbs
+// roughly exponentially, so "time = remaining magnitudes / this" is a far better ETA
+// than "remaining Flux / current Flux per second", which can be off by days.
+let fluxSample = { time: 0, log: 0 };
+let fluxLogSlope = 0;
+function trackFluxGrowth() {
+  const time = state.stats.timePlayed;
+  const log = state.flux.max(1).log10().toNumber();
+  const dt = time - fluxSample.time;
+  if (dt < 0 || dt > 30 || log < fluxSample.log - 1) {
+    // Fresh load, long pause or a reset: start over.
+    fluxSample = { time, log };
+    fluxLogSlope = 0;
+  } else if (dt >= 1) {
+    const slope = (log - fluxSample.log) / dt;
+    fluxLogSlope = fluxLogSlope === 0 ? slope : fluxLogSlope * 0.7 + slope * 0.3;
+    fluxSample = { time, log };
+  }
+}
+
+/** Seconds until Flux reaches `cost`, or Infinity if there's no estimate yet. */
+function fluxEta(cost: Decimal): number {
+  if (state.flux.gte(cost)) return 0;
+  if (fluxLogSlope > 0) return (cost.log10().toNumber() - state.flux.max(1).log10().toNumber()) / fluxLogSlope;
+  const rate = fluxPerSecond();
+  return rate.gt(0) ? cost.sub(state.flux).div(rate).toNumber() : Infinity;
 }
 
 function engineRow(tier: number): View {
@@ -70,12 +100,35 @@ function engineRow(tier: number): View {
       setVisible(root, unlocked);
       if (!unlocked) return;
       const engine = state.engines[tier];
-      setText(mult, formatMult(engineMult(tier)));
-      setText(amount, format(engine.amount, 2, 0));
-      const pct = engineGrowthPercent(tier);
-      setText(growth, pct.gt(0) ? `+${format(pct, 2, 1)}%/s` : "");
-      milestone.style.width = `${((engine.bought % MILESTONE_SIZE) / MILESTONE_SIZE) * 100}%`;
       const automated = hasEngineAutobuyers() && state.automation.engines[tier];
+      setText(mult, formatMult(engineMult(tier)));
+      // An automated Engine nobody has bought yet: say when the autobuyer will pick it up.
+      const pending = automated && engine.bought === 0;
+      setClass(root, "pending", pending);
+      if (pending) {
+        const cost = engineCost(tier);
+        setText(amount, `First buy at ${format(cost)}`);
+        const eta = fluxEta(cost);
+        setText(
+          growth,
+          state.flux.gte(cost) ? "buying…" : !Number.isFinite(eta) ? "" : eta < 60 ? `~${Math.ceil(eta)}s` : `~${formatTime(eta)}`,
+        );
+        // Flux grows exponentially, so progress is measured in orders of magnitude: a linear
+        // bar would sit near empty and then jump to full at the very end.
+        const ready = state.flux.gte(cost);
+        const progress = ready ? 1 : Math.max(0, state.flux.max(1).log10().div(cost.log10()).toNumber());
+        milestone.style.width = `${progress * 100}%`;
+        // Grey while far off, warming to teal as it closes in, amber once it's affordable.
+        milestone.style.background = ready
+          ? "var(--shard)"
+          : `color-mix(in srgb, var(--flux) ${Math.round(progress ** 2 * 100)}%, var(--text-dim))`;
+      } else {
+        setText(amount, format(engine.amount, 2, 0));
+        const pct = engineGrowthPercent(tier);
+        setText(growth, pct.gt(0) ? `+${format(pct, 2, 1)}%/s` : "");
+        milestone.style.width = `${((engine.bought % MILESTONE_SIZE) / MILESTONE_SIZE) * 100}%`;
+        milestone.style.background = "";
+      }
       setClass(root, "automated", automated);
       setVisible(badge, automated);
       setVisible(buttons, !automated);
@@ -257,6 +310,7 @@ export function enginesTab(): View {
   return {
     root,
     update() {
+      trackFluxGrowth();
       // Buy mode only affects the per-Engine buttons, which automated rows hide.
       const anyManualEngine = Array.from({ length: ENGINE_COUNT }, (_, tier) => tier).some(
         (tier) => isEngineUnlocked(tier) && !(hasEngineAutobuyers() && state.automation.engines[tier]),
