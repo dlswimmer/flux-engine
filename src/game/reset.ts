@@ -20,7 +20,7 @@ export function resetForOverdrive() {
 const LATTICEWORKS_KEEPS = 4;
 
 /** A floor for the whole Collapse: no reset inside it goes below this (Ignition 1, Head Start 2). */
-const minOverdrives = () => (hasNode("head-start") ? 2 : shardUpgrades.has("ignition") ? 1 : 0);
+const minOverdrives = () => (shardUpgrades.has("ignition") ? 1 : 0) + (hasNode("head-start") ? 1 : 0);
 
 export function resetForLattice() {
   resetEngineFloor();

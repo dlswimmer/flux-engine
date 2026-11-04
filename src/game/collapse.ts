@@ -218,7 +218,9 @@ export function collapseEngineMult(): Decimal {
 // what opens the Rift. Reset by a Rift.
 
 const OVERCHARGE_BASE_COST = 5;
-const OVERCHARGE_COST_GROWTH = 1.25;
+/** ×1.35: at ×1.25 income rose almost as fast as cost (~×1.2 a level), so every level took
+ *  ~10s and Overcharge 20 came 3 minutes after Breach. */
+const OVERCHARGE_COST_GROWTH = 1.35;
 /** ×10: at ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice. */
 const OVERCHARGE_MULT = 10;
 

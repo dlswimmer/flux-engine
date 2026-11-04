@@ -17,7 +17,7 @@ import { UpgradeSet } from "./upgrades";
 /** Overcharge level needed to Rift. Tuned with `npm run sim -- rift`. */
 export const RIFT_OVERCHARGE = 20;
 /** Every this many Overcharge levels past the requirement doubles Essence. */
-const LEVELS_PER_DOUBLING = 4;
+const LEVELS_PER_DOUBLING = 2;
 
 export const isRiftUnlocked = () => isBreached() || state.rift.count > 0;
 export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
@@ -112,20 +112,20 @@ export const riftNodes = new UpgradeSet(
       name: "Rift Lens",
       desc: "All Engines gain a bonus from all the Essence you've ever earned.",
       cost: 1,
-      // ^0.5: at ^2 one 16-Essence Rift made every later Rift take ~10s; ^0.75 made the
-      // first Collapse after a Rift a third of the very first one.
-      effect: () => state.rift.totalEssence.add(1).pow(0.5),
+      // ^0.25: tuned so the first Collapse after Rift 1 is ~50% of the very first one with
+      // just the Lens (~33% with Head Start too). ^2 made every Rift after the first take ~10s.
+      effect: () => state.rift.totalEssence.add(1).pow(0.25),
       effectText: (v) => `×${v.toNumber().toFixed(2)}`,
     },
     {
       id: "head-start",
       name: "Head Start",
-      desc: "Start every Collapse with 2 Overdrives: Engines V and VI from the first second.",
+      desc: "Start every Collapse with 1 Overdrive (2 with Ignition): Engine V from the first second.",
       cost: 2,
       requires: ["rift-lens"],
       // Like Ignition: applies to the Collapse you're in, not just the next one.
       onBuy: () => {
-        if (state.overdrives < 2) state.overdrives = 2;
+        if (state.overdrives < headStartOverdrives()) state.overdrives = headStartOverdrives();
       },
     },
     {
@@ -215,3 +215,6 @@ export function riftShardMult(): number {
   if (hasNode("long-burn")) mult *= longBurnMult();
   return mult;
 }
+
+/** Head Start stacks with Ignition: +1 Overdrive at the start of every Collapse. */
+export const headStartOverdrives = () => (state.collapse.upgrades.includes("ignition") ? 1 : 0) + 1;

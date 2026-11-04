@@ -80,22 +80,22 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - Node value (`npm run report -- rift`, Shards/min, 5-minute test): Order ×1.37 / ×1.26 (grows to ×3 in long Rifts) / ×2.00; Entropy ×1.28 / ×1.44 / ×2.52. Entropy wins short Rifts, Order catches up in long ones.
 
 ### 2 · Rift (built: v1)
-- **Overcharge** (after Breach): repeatable, all Engines ×10 per level, cost 5 × 1.25^level Shards. Reset by a Rift. (At ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice.)
-- **Rift**: needs **Overcharge 20**. Gives **Essence** = 2^((Overcharge − 20) / 4): 1 at 20, doubling every 4 levels. Resets Shards, Overcharge, Shard upgrades (except milestone keeps) and **this Rift's Collapse count**, so Echo and the autobuyer ramp start over. Lifetime Collapses (Heat unlock, stats) stay. Target: the first Collapse after Rift 1 takes about half as long as the very first one; it was 8s when the Rift kept the count, the core upgrades and full-speed autobuyers.
+- **Overcharge** (after Breach): repeatable, all Engines ×10 per level, cost 5 × 1.35^level Shards (at ×1.25 income kept pace with cost and Overcharge 20 came 3 minutes after Breach). Reset by a Rift. (At ×2 a level was worth ~2.6 orders of magnitude of depth vs ~30 for a Lattice.)
+- **Rift**: needs **Overcharge 20**. Gives **Essence** = 2^((Overcharge − 20) / 2): 1 at 20, doubling every 2 levels. Resets Shards, Overcharge, Shard upgrades (except milestone keeps) and **this Rift's Collapse count**, so Echo and the autobuyer ramp start over. Lifetime Collapses (Heat unlock, stats) stay. Target: the first Collapse after Rift 1 takes about half as long as the very first one; it was 8s when the Rift kept the count, the core upgrades and full-speed autobuyers.
 - *Why Overcharge, not Flux depth:* v1 gated on peak Flux ≥ e350. Depth past the Horizon reacts violently to every multiplier: one extra Lattice was ~30 orders of magnitude, so the gate was either a wall (Lattice limit 1: never opened in 6h) or trivial (unlimited: 40s after Breach). Overcharge is bought with Shards, which still come from depth, so everything feeds in smoothly.
 - **Tempo past the Horizon** costs ×4096 per level instead of ×8. A Tempo level boosts all 8 tiers, so at ~1.35/level (6 Lattices) it out-grew its ×8 price and paid for itself forever: Flux hit e(2.6 trillion) in a minute and Essence went "infinite". Lattice requirements are also quadratic now (40 + 20L + 10L² Engine VIII), so a run tops out around 3.
 - **Milestones** (staged, so each Rift replays faster than the last): 1 Rift keeps automation (Automators, Foreman, Self-Collapse, Overclock, Thermostat); 2 keeps Kindling/Momentum/Echo/Ignition/Tuning/Gearing; 3 keeps Cascade/Exchanger/Resonance/Latticeworks; 4 keeps Prism/Breach.
-- **Tree**: Rift Lens (1, all Engines ×(total Essence + 1)^0.5), Head Start (2, start each Collapse with 2 Overdrives), Shard Focus (3, Shards ×2), then a branch at 5 / 10 / 20. 41 Essence for everything.
+- **Tree**: Rift Lens (1, all Engines ×(total Essence + 1)^0.25), Head Start (2, +1 Overdrive at the start of every Collapse, stacking with Ignition), Shard Focus (3, Shards ×2), then a branch at 5 / 10 / 20. 41 Essence for everything.
 - **Self-Collapse** (Shard upgrade, 6, needs Foreman) unlocks auto-Collapse ("when it gives at least N Shards"). Before it existed, the sim needed ~280 manual Collapses before the first Rift.
 - **Milestones** (`npm run report -- milestones`, fresh save, Rifting at 4 Essence):
 
   | Player | Collapse 1 | Automators | Breach | Rift 1 | 1st Collapse after Rift 1 | Rift 2 | Rift 5 |
   | --- | --- | --- | --- | --- | --- | --- | --- |
-  | Active (acts every 1s, vents at 75%) | 21m | 43m | 1h17m | 1h29m | 3m50s | 2h00m | 2h30m |
-  | Active, no manual venting | 21m | 43m | 1h28m | 1h39m | 3m50s | 2h10m | 2h40m |
-  | Casual (acts every 10s, auto-Collapse) | 40m | 1h50m | 2h57m | 3h31m | 4m40s | 4h26m | 5h21m |
-  | Rift ASAP (1 Essence, Lens only) | | | 1h17m | 1h22m | 9m21s (43%) | 2h05m | 2h47m |
-  | Rift at 8 Essence | | | 1h17m | 1h36m | 3m04s | 1h58m | 2h27m (tree done) |
+  | Active, Rift at 4 Essence (Lens + Head Start) | 21m | 43m | 1h17m | 1h42m | 7m05s (33%) | 2h35m | 3h23m |
+  | Rift ASAP (1 Essence, Lens only) | | | 1h17m | 1h30m | 11m04s (51%) | 2h25m | 3h33m |
+  | Rift at 8 Essence | | | 1h17m | 2h02m | 9m05s | 2h38m | 3h14m (tree done 3h06m) |
+
+  A player holding Max All runs ~15% faster than this 1s-cadence bot (3m20s vs 3m50s for the same Collapse in an earlier build).
 
   Buying Automators first (instead of cheapest-first) helps casual players ~10 min but costs active ones ~20 (early autobuyers are slower than a clicking player). Soft spot: casual players are 2× slower before Automators.
 - **Pacing** (sim, earlier tuning run): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
