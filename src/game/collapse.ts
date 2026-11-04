@@ -120,7 +120,7 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "breach",
       name: "Breach",
-      desc: "Flux can pass the Horizon, and Shard gain scales with Flux beyond it.",
+      desc: "Flux can pass the Horizon (growth slows the further past it you go), and Shard gain scales with your peak Flux.",
       cost: 12,
       requires: ["prism"],
     },

@@ -1,6 +1,6 @@
 import { D, Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
-import { collapseEngineMult, shardUpgrades } from "./collapse";
+import { HORIZON, collapseEngineMult, shardUpgrades } from "./collapse";
 import { addFlux } from "./flux";
 import { fluxThrottle, surgeMult } from "./heat";
 import { overdriveMult } from "./overdrive";
@@ -111,7 +111,18 @@ export function engineMult(tier: number): Decimal {
 export const engineRate = (tier: number): Decimal =>
   state.engines[tier].amount.mul(engineMult(tier)).mul(tempoMult()).mul(BASE_RATE);
 
-export const fluxPerSecond = () => engineRate(0);
+/**
+ * Past the Horizon (only reachable after Breach) Flux income is scaled by
+ * (Horizon / Flux)^HORIZON_DRAG. Without it, Tempo (cost ×8, bought with Flux) feeds back
+ * into Flux and a run hit e2,150 in a minute, worth 20 billion Shards. With 0.5, runs
+ * settle around e280-e310: pushing ~30s past the Horizon is worth ~4× the Shards of
+ * Collapsing at it, then it flattens.
+ */
+const HORIZON_DRAG = 0.5;
+export const horizonDrag = (): Decimal =>
+  state.flux.gt(HORIZON) ? HORIZON.div(state.flux).pow(HORIZON_DRAG) : D(1);
+
+export const fluxPerSecond = () => engineRate(0).mul(horizonDrag());
 
 /** Percent-per-second growth of an engine's amount from the tier above. */
 export function engineGrowthPercent(tier: number): Decimal {

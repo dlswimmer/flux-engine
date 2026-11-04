@@ -1,12 +1,12 @@
 import { format, formatCount, formatInt } from "../core/format";
 import { state } from "../core/state";
 import { HORIZON, canCollapse, doCollapse, isCollapseUnlocked, shardGain } from "../game/collapse";
-import { fluxPerSecond } from "../game/engines";
+import { fluxPerSecond, horizonDrag } from "../game/engines";
 import { h, setClass, setText, setVisible, type View } from "./dom";
 
 export function headerView(): View {
   const flux = h("span", { class: "big-number" });
-  const rate = h("span", { class: "rate" });
+  const rate = h("span", { class: "rate", title: "Past the Horizon, Flux income is slowed the further past it you are" });
   const fill = h("div", { class: "progress-fill" });
   const progressLabel = h("span", { class: "progress-label" });
   const shards = h("div", { class: "shard-count" });
@@ -37,7 +37,8 @@ export function headerView(): View {
       setText(speedBadge, `×${state.options.devSpeed} speed`);
 
       setText(flux, format(state.flux, 2, 1));
-      setText(rate, `+${format(fluxPerSecond(), 2, 1)} / sec`);
+      const drag = horizonDrag();
+      setText(rate, `+${format(fluxPerSecond(), 2, 1)} / sec` + (drag.lt(1) ? ` · slowed ÷${format(drag.recip(), 2, 1)}` : ""));
 
       // Peak, not current: spending or an Overdrive shouldn't make the bar fall back.
       const pct = Math.min(100, Math.max(0, (state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog) * 100));
