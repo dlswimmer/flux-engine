@@ -257,6 +257,11 @@ export function enginesTab(): View {
   return {
     root,
     update() {
+      // Buy mode only affects the per-Engine buttons, which automated rows hide.
+      const anyManualEngine = Array.from({ length: ENGINE_COUNT }, (_, tier) => tier).some(
+        (tier) => isEngineUnlocked(tier) && !(hasEngineAutobuyers() && state.automation.engines[tier]),
+      );
+      setVisible(buyMode, anyManualEngine);
       setText(buyMode, (state.ui.buyMode === "next" ? "Buy mode: Until ×2" : "Buy mode: 1") + keyHint("B"));
       for (const view of views) view.update();
       setVisible(lattice.root, state.overdrives >= 4 || state.lattices > 0);
