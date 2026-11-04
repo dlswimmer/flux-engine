@@ -19,8 +19,8 @@ export function resetForOverdrive() {
 
 const LATTICEWORKS_KEEPS = 4;
 
-/** A floor for the whole Collapse: no reset inside it goes below this (Ignition 1, Head Start 4). */
-const minOverdrives = () => (hasNode("head-start") ? 4 : shardUpgrades.has("ignition") ? 1 : 0);
+/** A floor for the whole Collapse: no reset inside it goes below this (Ignition 1, Head Start 2). */
+const minOverdrives = () => (hasNode("head-start") ? 2 : shardUpgrades.has("ignition") ? 1 : 0);
 
 export function resetForLattice() {
   resetEngineFloor();
@@ -59,17 +59,23 @@ export function devResetRift() {
   state.rift.nodes = [];
   state.rift.respec = false;
   state.rift.introduced = false;
-  // Head Start's 4 Overdrives no longer apply.
+  // Head Start's Overdrives no longer apply.
   resetForCollapse();
 }
 
 /**
  * A Rift wipes the Collapse layer: Shards, Overcharge, and every Shard upgrade except the
- * ones Rift milestones keep. Collapse count stays (it drives Echo and autobuyer speed).
+ * ones Rift milestones keep, and this Rift's Collapse count (lifetime Collapses, which drive
+ * autobuyer speed and Heat, stay in stats).
  */
 export function resetForRift() {
   state.collapse.shards = D(0);
   state.collapse.overcharge = 0;
+  // Echo grows with Collapses this Rift; without this reset (×6 by the first Rift) plus the
+  // kept upgrades, the first Collapse after a Rift took 8s against ~21m for the very first.
+  state.stats.collapses = Math.max(state.stats.collapses, state.collapse.count);
+  state.collapse.count = 0;
+  state.collapse.bestTime = Infinity;
   const kept = keptShardUpgrades();
   state.collapse.upgrades = state.collapse.upgrades.filter((id) => kept.includes(id));
   resetForCollapse();

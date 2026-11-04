@@ -21,6 +21,8 @@ export const MIN_INTERVAL = 0.05;
 
 /** Seconds between autobuyer activations. */
 export function autobuyInterval(): number {
+  // Collapses this Rift, so a Rift restarts the ramp. With lifetime Collapses, kept automation
+  // alone made the first Collapse after a Rift ~55% of the very first one, before any Rift node.
   let interval = BASE_INTERVAL * SPEEDUP_PER_COLLAPSE ** state.collapse.count;
   if (shardUpgrades.has("overclock")) interval /= 3;
   if (hasNode("self-winding")) interval /= 2;

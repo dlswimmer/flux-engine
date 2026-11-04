@@ -1,6 +1,6 @@
 import { D, Decimal } from "../lib/decimal";
 import { state } from "../core/state";
-import { shardUpgrades } from "./collapse";
+import { shardUpgrades, totalCollapses } from "./collapse";
 import { latticeTempoBonus } from "./lattice";
 
 const BASE_COST = 1e3;
@@ -20,7 +20,7 @@ const SCALED_BASE = D(BASE_COST).mul(D(COST_GROWTH).pow(SCALING_START));
 
 /** Tempo unlocks once the player owns their first Engine II. */
 export const isTempoUnlocked = () =>
-  state.engines[1].bought > 0 || state.overdrives > 0 || state.lattices > 0 || state.collapse.count > 0;
+  state.engines[1].bought > 0 || state.overdrives > 0 || state.lattices > 0 || totalCollapses() > 0;
 
 /** Multiplier each Tempo level applies to all engines. */
 export function tempoFactor(): Decimal {

@@ -55,15 +55,17 @@ export interface RiftMilestone {
 }
 
 export const RIFT_MILESTONES: RiftMilestone[] = [
-  // The first Rift already keeps the core upgrades: when it didn't, Rift 2 took twice as long
-  // as Rift 1 (rebuilding Kindling etc. from zero Shards) - a bad first impression of a layer.
+  // Staged so each Rift's replay is faster than the last. The first Collapse after Rift 1
+  // takes about half as long as the very first one (when Rift 1 kept everything and the
+  // Collapse count, it took 8s).
   {
     rifts: 1,
-    text: "Keep the automation upgrades and Kindling, Momentum, Echo, Ignition, Tuning and Gearing.",
-    keeps: ["automators", "automators2", "selfcollapse", "overclock", "thermostat", "kindling", "momentum", "echo", "ignition", "tuning", "gearing"],
+    text: "Keep Automators, Foreman, Self-Collapse, Overclock and Thermostat.",
+    keeps: ["automators", "automators2", "selfcollapse", "overclock", "thermostat"],
   },
-  { rifts: 2, text: "Keep Cascade, Heat Exchanger, Resonance and Latticeworks.", keeps: ["cascade", "exchanger", "resonance", "latticeworks"] },
-  { rifts: 3, text: "Keep Prism and Breach.", keeps: ["prism", "breach"] },
+  { rifts: 2, text: "Keep Kindling, Momentum, Echo, Ignition, Tuning and Gearing.", keeps: ["kindling", "momentum", "echo", "ignition", "tuning", "gearing"] },
+  { rifts: 3, text: "Keep Cascade, Heat Exchanger, Resonance and Latticeworks.", keeps: ["cascade", "exchanger", "resonance", "latticeworks"] },
+  { rifts: 4, text: "Keep Prism and Breach.", keeps: ["prism", "breach"] },
 ];
 
 export const hasRiftMilestone = (rifts: number) => state.rift.count >= rifts;
@@ -110,19 +112,20 @@ export const riftNodes = new UpgradeSet(
       name: "Rift Lens",
       desc: "All Engines gain a bonus from all the Essence you've ever earned.",
       cost: 1,
-      // ^0.75: at ^2 one 16-Essence Rift made every later Rift take ~10s.
-      effect: () => state.rift.totalEssence.add(1).pow(0.75),
+      // ^0.5: at ^2 one 16-Essence Rift made every later Rift take ~10s; ^0.75 made the
+      // first Collapse after a Rift a third of the very first one.
+      effect: () => state.rift.totalEssence.add(1).pow(0.5),
       effectText: (v) => `×${v.toNumber().toFixed(2)}`,
     },
     {
       id: "head-start",
       name: "Head Start",
-      desc: "Start every Collapse with 4 Overdrives: Engines V–VIII from the first second.",
+      desc: "Start every Collapse with 2 Overdrives: Engines V and VI from the first second.",
       cost: 2,
       requires: ["rift-lens"],
       // Like Ignition: applies to the Collapse you're in, not just the next one.
       onBuy: () => {
-        if (state.overdrives < 4) state.overdrives = 4;
+        if (state.overdrives < 2) state.overdrives = 2;
       },
     },
     {

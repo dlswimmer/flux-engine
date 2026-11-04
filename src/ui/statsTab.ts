@@ -1,5 +1,6 @@
 import { format, formatTime } from "../core/format";
 import { COLLAPSE_HISTORY, state } from "../core/state";
+import { totalCollapses } from "../game/collapse";
 import { D } from "../lib/decimal";
 import { h, setText, setVisible, type View } from "./dom";
 
@@ -64,7 +65,8 @@ export function statsTab(): View {
     ["Time played", () => formatTime(state.stats.timePlayed)],
     ["Total Flux produced", () => format(state.stats.totalFlux)],
     ["Best Flux", () => format(state.stats.bestFlux)],
-    ["Collapses", () => String(state.collapse.count)],
+    ["Collapses", () => String(totalCollapses())],
+    ["Collapses this Rift", () => String(state.collapse.count)],
     ["Time in this Collapse", () => formatTime(state.collapse.time)],
     ["Fastest Collapse", () => formatTime(state.collapse.bestTime)],
     ["Rifts", () => String(state.rift.count)],

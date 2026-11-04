@@ -95,7 +95,8 @@ export interface GameState {
     collapseShards: number;
   };
 
-  stats: { timePlayed: number; totalFlux: Decimal; bestFlux: Decimal };
+  /** collapses: lifetime Collapse count (collapse.count is this Rift's; a Rift resets it). */
+  stats: { timePlayed: number; totalFlux: Decimal; bestFlux: Decimal; collapses: number };
   options: { autosave: boolean; offlineProgress: boolean; devSpeed: number };
   ui: { tab: string; buyMode: "one" | "next" };
 }
@@ -152,7 +153,7 @@ export function defaultState(): GameState {
       collapseShards: 0,
     },
 
-    stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0) },
+    stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0 },
     options: { autosave: true, offlineProgress: true, devSpeed: 1 },
     ui: { tab: "engines", buyMode: "next" },
   };

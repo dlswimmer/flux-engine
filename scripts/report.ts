@@ -96,6 +96,9 @@ export function playthrough(p: Player, rifts = 5, limit = 8 * 3600): Record<stri
     const spend = () => {
       const c = state.collapse.count;
       if (c >= 1) mark("Collapse 1");
+      // How long the first Collapse after Rift 1 takes (a duration, not a time stamp).
+      if (state.rift.count === 1 && c >= 1 && ms["Rift 1"] !== undefined && ms["1st Collapse after R1"] === undefined)
+        ms["1st Collapse after R1"] = t - ms["Rift 1"];
       if (c >= 10) mark("Collapse 10");
       buyUpgrades(p.upgradeOrder);
       if (shardUpgrades.has("automators")) mark("Automators");
@@ -144,12 +147,12 @@ const BASE: Player = {
   branch: "order",
 };
 
-const MILESTONES = ["Collapse 1", "Collapse 10", "Automators", "Foreman", "Self-Collapse", "Breach", "Rift 1", "Rift 3", "Rift 5", "Tree done"];
+const MILESTONES = ["Collapse 1", "Automators", "Breach", "Rift 1", "1st Collapse after R1", "Rift 2", "Rift 3", "Rift 5", "Tree done"];
 
 function milestones(players: Player[]) {
   const t = (s?: number) => (s === undefined ? "—" : formatTime(s)).padStart(13);
   console.log("Game time at each milestone (fresh save, up to 5 Rifts / 8h):\n");
-  console.log("".padEnd(26) + MILESTONES.map((m) => m.padStart(13)).join(""));
+  console.log("".padEnd(26) + MILESTONES.map((m) => (m === "1st Collapse after R1" ? "R1→Collapse" : m).padStart(13)).join(""));
   for (const p of players) {
     const ms = playthrough(p);
     console.log(p.name.padEnd(26) + MILESTONES.map((m) => t(ms[m])).join(""));

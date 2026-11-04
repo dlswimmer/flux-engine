@@ -1,5 +1,5 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { shardUpgrades } from "./collapse";
+import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
@@ -17,7 +17,7 @@ const MIN_VENT = 5;
 const SURGE_DURATION = 15;
 const HEAT_UNLOCK_COLLAPSES = 3;
 
-export const isHeatUnlocked = () => state.collapse.count >= HEAT_UNLOCK_COLLAPSES;
+export const isHeatUnlocked = () => totalCollapses() >= HEAT_UNLOCK_COLLAPSES;
 export const hasThermostat = () => shardUpgrades.has("thermostat");
 
 const activeTiers = () => state.engines.filter((e) => e.amount.gt(0)).length;

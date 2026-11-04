@@ -81,8 +81,8 @@ const formatEta = (eta: number) =>
 let shownEngineRows = 0;
 let shownForCollapse = -1;
 function updateShownEngineRows() {
-  if (state.collapse.count !== shownForCollapse) {
-    shownForCollapse = state.collapse.count;
+  if (state.stats.collapses + state.collapse.count !== shownForCollapse) {
+    shownForCollapse = state.stats.collapses + state.collapse.count;
     shownEngineRows = 0;
   }
   shownEngineRows = Math.max(shownEngineRows, unlockedEngines());

@@ -34,7 +34,7 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "echo",
       name: "Echo",
-      desc: "All Engines gain a bonus based on total Collapses.",
+      desc: "All Engines gain a bonus based on Collapses this Rift.",
       cost: 1,
       effect: () => D(state.collapse.count + 1).pow(0.4),
       effectText: (v) => formatMult(v),
@@ -42,7 +42,7 @@ export const shardUpgrades = new UpgradeSet(
     {
       id: "automators",
       name: "Automators",
-      desc: "Unlock autobuyers for every Engine and for Tempo. They start slow and get faster with every Collapse.",
+      desc: "Unlock autobuyers for every Engine and for Tempo. They start slow and get faster with every Collapse (the ramp restarts each Rift).",
       cost: 1,
     },
     {
@@ -148,7 +148,13 @@ export function capAtHorizon() {
 // autobuyer) and Overdrive/Lattice resets spend Flux, and none of that should take a
 // Collapse away or shrink its Shards.
 export const canCollapse = () => state.collapse.peakFlux.gte(HORIZON);
-export const isCollapseUnlocked = () => state.collapse.count > 0 || canCollapse();
+/**
+ * Lifetime Collapses. Saves from before Rifts reset the count have stats.collapses = 0, so
+ * take the larger of the two until the first Rift folds them together.
+ */
+export const totalCollapses = () => Math.max(state.stats.collapses, state.collapse.count);
+
+export const isCollapseUnlocked = () => totalCollapses() > 0 || canCollapse();
 
 /**
  * What a Collapse pays: the best Shard gain reached at any moment this Collapse. Like peak
@@ -183,10 +189,11 @@ export function doCollapse(): boolean {
   if (!canCollapse()) return false;
   const gain = shardGain();
   state.collapse.shards = state.collapse.shards.add(gain);
+  state.stats.collapses = totalCollapses() + 1;
   state.collapse.count++;
   state.collapse.history = [
     ...state.collapse.history,
-    { number: state.collapse.count, time: state.collapse.time, shards: gain },
+    { number: state.stats.collapses, time: state.collapse.time, shards: gain },
   ].slice(-COLLAPSE_HISTORY);
   state.collapse.bestTime = Math.min(state.collapse.bestTime, state.collapse.time);
   resetForCollapse();
