@@ -50,6 +50,8 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - **Tempo** (×1.10 per level, cost ×8) multiplies every Engine. It's the main growth engine.
 - **Overdrive** (all Engines ×2): the first four need 10 of your highest Engine and each unlock the next Engine. After that, 20 Engine VIII, then +10 each.
 - **Lattice**: needs 40 (+20 each) Engine VIII. Adds +0.04 to each Tempo level. Resets Overdrives (*Latticeworks* keeps 4).
+- **Bulk claims:** one press (or autobuyer action, up to its Stop-at limit) claims every Overdrive past the unlock phase and every Lattice your Engine VIII covers, with one reset. Whole game ~9% faster (Rift 5: 3h52m → 3h32m for the 1s bot), nothing changes before Automators.
+- **Watch (sim, after Rift 2 and Rift 4, everything automated):** Overdrives past the 4th cost more time than their ×2 gives back. Each one resets a run that is ~8s from rebuilt, while ×2 saves a fraction of a second once Flux grows that fast. First Collapse after Rift 2: Stop-at OD 4 / Lattice 1 = 1m29s, OD 10 / Lattice 1 = 2m27s, OD 10 / Lattice 3 = 3m25s. If Overdrives past the 4th did not reset, more would always be better (59s after Rift 2, 46s after Rift 4).
 - Engines II–IV are cheap (30 / 400 / 1e4) so the opening, and every rebuild after a Lattice, moves fast: Engine II at ~20s, first Overdrive at ~2m15s.
 
 ### 1 · Collapse (built: core loop + 15 upgrades)

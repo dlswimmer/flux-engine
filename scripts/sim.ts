@@ -47,10 +47,10 @@ function playRun(s: Strategy, log?: (msg: string) => void): number {
     sinceAct = 0;
     if (canCollapse()) return t;
     if (state.lattices < s.maxLattices && canLattice()) {
-      doLattice();
+      doLattice(s.maxLattices - state.lattices);
       log?.(`${formatTime(t)} Lattice ${state.lattices}`);
     } else if (state.overdrives < s.maxOverdrives && canOverdrive()) {
-      doOverdrive();
+      doOverdrive(s.maxOverdrives - state.overdrives);
       log?.(`${formatTime(t)} Overdrive ${state.overdrives}`);
     } else {
       maxAll();

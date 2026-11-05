@@ -62,10 +62,10 @@ function playRun(p: Play, track = false): RunResult {
     since = 0;
     if (canCollapse()) return { time: t, events };
     if (state.lattices < p.maxLattices && canLattice()) {
-      doLattice();
+      doLattice(p.maxLattices - state.lattices);
       note(`Lattice ${state.lattices}`);
     } else if (state.overdrives < p.maxOverdrives && canOverdrive()) {
-      doOverdrive();
+      doOverdrive(p.maxOverdrives - state.overdrives);
       note(`Overdrive ${state.overdrives}`);
     } else if (!p.noManualBuy) maxAll();
     if (track) {

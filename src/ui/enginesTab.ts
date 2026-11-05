@@ -33,8 +33,22 @@ import {
   surgeMultFor,
   vent,
 } from "../game/heat";
-import { canLattice, doLattice, latticeRequirement, latticeTempoBonus } from "../game/lattice";
-import { canOverdrive, doOverdrive, overdriveMult, overdriveRequirement } from "../game/overdrive";
+import {
+  canLattice,
+  doLattice,
+  latticeRequirement,
+  latticesAvailable,
+  latticeTempoBonus,
+  nextLatticeRequirement,
+} from "../game/lattice";
+import {
+  canOverdrive,
+  doOverdrive,
+  nextOverdriveRequirement,
+  overdriveMult,
+  overdriveRequirement,
+  overdrivesAvailable,
+} from "../game/overdrive";
 import { buyMaxTempo, buyTempo, canBuyTempo, isTempoUnlocked, tempoCost, tempoFactor, tempoMult } from "../game/tempo";
 import { h, holdToRepeat, keyHint, setClass, setDisabled, setText, setVisible, type View } from "./dom";
 
@@ -314,8 +328,13 @@ export function enginesTab(): View {
       (state.overdrives < 4 ? "Next unlocks a new Engine. " : "") +
       "Resets Flux, Engines and Tempo.",
     canOverdrive,
-    doOverdrive,
+    () => doOverdrive(),
     () => {
+      const count = overdrivesAvailable();
+      if (count > 1) {
+        const next = nextOverdriveRequirement();
+        return `Overdrive ×${count} · one more at ${next.amount} Engine ${ENGINE_NAMES[next.tier]}`;
+      }
       const { tier, amount } = overdriveRequirement();
       return `Overdrive · needs ${amount} Engine ${ENGINE_NAMES[tier]}`;
     },
@@ -332,8 +351,11 @@ export function enginesTab(): View {
           ? "Resets Overdrives to 1."
           : "Resets Overdrives too."),
     canLattice,
-    doLattice,
-    () => `Form Lattice · needs ${formatInt(latticeRequirement())} Engine VIII`,
+    () => doLattice(),
+    () =>
+      latticesAvailable() > 1
+        ? `Form ${latticesAvailable()} Lattices · one more at ${formatInt(nextLatticeRequirement())} Engine VIII`
+        : `Form Lattice · needs ${formatInt(latticeRequirement())} Engine VIII`,
     () => state.automation.lattice,
   );
 

@@ -91,7 +91,9 @@ export function runAutomation(dt: number) {
     }
   }
   if (hasResetAutobuyers() && !areResetsPaused()) {
-    if (auto.lattice && state.lattices < auto.latticeMax && canLattice()) doLattice();
-    else if (auto.overdrive && state.overdrives < auto.overdriveMax && canOverdrive()) doOverdrive();
+    // Each claims as many as the Engines cover, up to the Stop-at limit.
+    if (auto.lattice && state.lattices < auto.latticeMax && canLattice()) doLattice(auto.latticeMax - state.lattices);
+    else if (auto.overdrive && state.overdrives < auto.overdriveMax && canOverdrive())
+      doOverdrive(auto.overdriveMax - state.overdrives);
   }
 }

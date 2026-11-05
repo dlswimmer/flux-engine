@@ -141,8 +141,8 @@ export function playthrough(
       a.latticeMax = latMax;
       a.collapse = true;
       a.collapseShards = 0;
-    } else if (state.lattices < latMax && canLattice()) doLattice();
-    else if (state.overdrives < 8 && canOverdrive()) doOverdrive();
+    } else if (state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
+    else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
     maxAll();
   }
   void since;
@@ -184,8 +184,8 @@ function runTime(save: string, every = 1): number {
     t += DT;
     if (++step % Math.round(every / DT)) continue;
     if (canCollapse()) return t;
-    if (state.lattices < 1 && canLattice()) doLattice();
-    else if (state.overdrives < 8 && canOverdrive()) doOverdrive();
+    if (state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
+    else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
     maxAll();
   }
   return Infinity;
