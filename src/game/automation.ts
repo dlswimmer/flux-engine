@@ -3,7 +3,7 @@ import { canCollapse, doCollapse, isBreached, shardGain, shardUpgrades } from ".
 import { hasNode } from "./rift";
 import { buyMaxEngine } from "./engines";
 import { canLattice, doLattice } from "./lattice";
-import { canOverdrive, doOverdrive } from "./overdrive";
+import { UNLOCK_PHASE, canOverdrive, doOverdrive } from "./overdrive";
 import { buyMaxTempo } from "./tempo";
 
 export const hasEngineAutobuyers = () => shardUpgrades.has("automators");
@@ -68,6 +68,15 @@ function autoCollapseReady(): boolean {
   return rate < bestRate * 0.97;
 }
 
+/** The run has lasted at least this long since its last reset. */
+const waited = (seconds: number) => state.sinceReset + 1e-9 >= seconds;
+
+/**
+ * The wait only applies once Overdrives need Engine VIII and can come several at a time:
+ * each unlock-phase one needs a different Engine, so waiting there would only lose time.
+ */
+const overdriveWaitDone = () => state.overdrives < UNLOCK_PHASE || waited(state.automation.overdriveWait);
+
 let timer = 0;
 
 export function runAutomation(dt: number) {
@@ -91,9 +100,12 @@ export function runAutomation(dt: number) {
     }
   }
   if (hasResetAutobuyers() && !areResetsPaused()) {
-    // Each claims as many as the Engines cover, up to the Stop-at limit.
-    if (auto.lattice && state.lattices < auto.latticeMax && canLattice()) doLattice(auto.latticeMax - state.lattices);
-    else if (auto.overdrive && state.overdrives < auto.overdriveMax && canOverdrive())
+    // Each claims as many as the Engines cover, up to the Stop-at limit. A Lattice that is
+    // only waiting out its timer holds Overdrives back: one would reset the Engine VIII it needs.
+    const latticeWanted = auto.lattice && state.lattices < auto.latticeMax && canLattice();
+    if (latticeWanted) {
+      if (waited(auto.latticeWait)) doLattice(auto.latticeMax - state.lattices);
+    } else if (auto.overdrive && state.overdrives < auto.overdriveMax && canOverdrive() && overdriveWaitDone())
       doOverdrive(auto.overdriveMax - state.overdrives);
   }
 }

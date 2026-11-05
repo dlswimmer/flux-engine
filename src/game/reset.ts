@@ -9,6 +9,7 @@ import { hasNode, keptShardUpgrades } from "./rift";
 
 function resetEngineFloor() {
   state.flux = D(10);
+  state.sinceReset = 0;
   state.engines = defaultEngines();
   state.tempo = 0;
 }

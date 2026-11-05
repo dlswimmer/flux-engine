@@ -9,6 +9,7 @@ export function tick(dt: number) {
   state.stats.timePlayed += dt;
   state.collapse.time += dt;
   state.rift.time += dt;
+  state.sinceReset += dt;
   runAutomation(dt);
   updateHeat(dt);
   produce(dt);

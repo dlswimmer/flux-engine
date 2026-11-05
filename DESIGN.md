@@ -52,6 +52,16 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - **Lattice**: needs 40 (+20 each) Engine VIII. Adds +0.04 to each Tempo level. Resets Overdrives (*Latticeworks* keeps 4).
 - **Bulk claims:** one press (or autobuyer action, up to its Stop-at limit) claims every Overdrive past the unlock phase and every Lattice your Engine VIII covers, with one reset. Whole game ~9% faster (Rift 5: 3h52m → 3h32m for the 1s bot), nothing changes before Automators.
 - **Watch (sim, after Rift 2 and Rift 4, everything automated):** Overdrives past the 4th cost more time than their ×2 gives back. Each one resets a run that is ~8s from rebuilt, while ×2 saves a fraction of a second once Flux grows that fast. First Collapse after Rift 2: Stop-at OD 4 / Lattice 1 = 1m29s, OD 10 / Lattice 1 = 2m27s, OD 10 / Lattice 3 = 3m25s. If Overdrives past the 4th did not reset, more would always be better (59s after Rift 2, 46s after Rift 4).
+- **Auto-reset wait** (Automation → Resets, default 0): auto Overdrive/Lattice wait N seconds into a run so one reset claims several (the first 4 Overdrives never wait; a Lattice that is only waiting holds Overdrives back). Sim, average per Collapse, fully automated:
+
+  | Save | Setting | 0s | 10s | 20s |
+  | --- | --- | --- | --- | --- |
+  | Foreman | OD 10 / Lat 1 | 34s | 39s | 48s |
+  | Rift 2 | OD 10 / Lat 1 | 2m07s | 1m42s | 1m24s |
+  | Rift 2 | OD ∞ / Lat 3 | 3m29s | 1m47s | 1m32s |
+  | Rift 4 | OD ∞ / Lat 3 | 2m10s | 1m05s | 53s |
+
+  No single default fits (short runs lose time, long ones gain), so it is a setting. OD 4 / Lat 1 is still the best plain setting late (1m17s / 47s): the real fix is Trial rewards that make Overdrive and Lattice reset nothing.
 - Engines II–IV are cheap (30 / 400 / 1e4) so the opening, and every rebuild after a Lattice, moves fast: Engine II at ~20s, first Overdrive at ~2m15s.
 
 ### 1 · Collapse (built: core loop + 15 upgrades)

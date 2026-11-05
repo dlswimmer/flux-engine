@@ -96,6 +96,28 @@ function limitSetting(label: string, unit: string, get: () => number, set: (v: n
   };
 }
 
+/** "Wait [N] s into a run" number box. Blank or 0 = claim as soon as possible. */
+function waitSetting(get: () => number, set: (v: number) => void) {
+  const input = h("input", {
+    type: "number",
+    min: 0,
+    step: 1,
+    placeholder: "0",
+    onChange: () => {
+      const v = Number(input.value.trim());
+      set(Number.isFinite(v) ? Math.min(600, Math.max(0, v)) : 0);
+    },
+  });
+  const el = h("label", { class: "auto-setting" }, "Wait", input, "s into a run");
+  return {
+    el,
+    sync() {
+      if (document.activeElement === input) return;
+      input.value = get() > 0 ? String(get()) : "";
+    },
+  };
+}
+
 const lockedUntil = (id: string) => () =>
   shardUpgrades.has(id) ? null : `Buy ${shardUpgrades.get(id).name} (${shardUpgrades.get(id).cost} Shards) to unlock.`;
 
@@ -141,6 +163,15 @@ export function automationTab(): View {
     () => state.automation.latticeMax,
     (v) => (state.automation.latticeMax = v),
   );
+  const overdriveWait = waitSetting(
+    () => state.automation.overdriveWait,
+    (v) => (state.automation.overdriveWait = v),
+  );
+  const latticeWait = waitSetting(
+    () => state.automation.latticeWait,
+    (v) => (state.automation.latticeWait = v),
+  );
+  const settingsRow = (...els: HTMLElement[]) => h("div", { class: "auto-settings" }, ...els);
   const resets = group(
     "Resets",
     [
@@ -149,7 +180,7 @@ export function automationTab(): View {
         get: () => state.automation.overdrive,
         set: (v) => (state.automation.overdrive = v),
         note: () => (areResetsPaused() ? "paused: you can Collapse" : "per Collapse; blank = no limit"),
-        settings: overdriveLimit.el,
+        settings: settingsRow(overdriveLimit.el, overdriveWait.el),
       }),
       autobuyerCard({
         name: "Lattice",
@@ -161,7 +192,7 @@ export function automationTab(): View {
             : shardUpgrades.has("latticeworks")
               ? "goes before Overdrive"
               : "each one resets your Overdrives, so more is often slower",
-        settings: latticeLimit.el,
+        settings: settingsRow(latticeLimit.el, latticeWait.el),
       }),
       autobuyerCard({
         name: "Pause at the Horizon",
@@ -172,6 +203,12 @@ export function automationTab(): View {
       }),
     ],
     lockedUntil("automators2"),
+    h(
+      "p",
+      { class: "auto-hint" },
+      "Each press claims every Overdrive or Lattice your Engines cover. A wait lets a run build up so one reset claims several: " +
+        "0 is best early on, 10–20s once runs take a minute or more. The first 4 Overdrives never wait.",
+    ),
   );
 
   const threshold = h("input", {
@@ -238,6 +275,8 @@ export function automationTab(): View {
         collapseAt.value = state.automation.collapseShards > 0 ? String(state.automation.collapseShards) : "";
       overdriveLimit.sync();
       latticeLimit.sync();
+      overdriveWait.sync();
+      latticeWait.sync();
       if (hasThermostat() && document.activeElement !== threshold) threshold.value = String(state.heat.autoVentAt);
     },
   };

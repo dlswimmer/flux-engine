@@ -46,6 +46,8 @@ export interface GameState {
 
   // Layer 0: the engine floor
   flux: Decimal;
+  /** Seconds since the last reset of any kind (Overdrive, Lattice, Collapse, Rift). */
+  sinceReset: number;
   engines: EngineState[];
   tempo: number;
   overdrives: number;
@@ -106,6 +108,9 @@ export interface GameState {
     /** Auto-resets stop once this Collapse has this many (Infinity = no limit). */
     overdriveMax: number;
     latticeMax: number;
+    /** Auto Overdrive/Lattice wait this many seconds into a run first, so one reset can claim several. */
+    overdriveWait: number;
+    latticeWait: number;
     /** Auto Overdrive/Lattice wait once you can Collapse (a reset then just restarts a run that's done). */
     pauseResetsAtHorizon: boolean;
     /** Auto-Collapse (Self-Collapse upgrade): Collapse once the next one gives at least this many Shards (0 = as soon as possible). */
@@ -137,6 +142,7 @@ export function defaultState(): GameState {
     meta: { version: SAVE_VERSION, created: now, lastTick: now },
 
     flux: D(10),
+    sinceReset: 0,
     engines: defaultEngines(),
     tempo: 0,
     overdrives: 0,
@@ -176,6 +182,8 @@ export function defaultState(): GameState {
       // without Latticeworks every extra Lattice slows a short run (unlimited: ~70% slower).
       overdriveMax: 10,
       latticeMax: 1,
+      overdriveWait: 0,
+      latticeWait: 0,
       pauseResetsAtHorizon: true,
       collapse: true,
       collapseShards: 0,

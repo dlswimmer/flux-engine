@@ -257,6 +257,9 @@ h3 .auto-badge { margin-left: 8px; }
   color: var(--text-dim);
   font-size: 13px;
 }
+.auto-settings { display: flex; flex-wrap: wrap; column-gap: 8px; }
+.auto-settings .auto-setting { padding-right: 0; }
+.auto-hint { margin: 0 0 8px; font-size: 12px; color: var(--text-dim); }
 .auto-setting input {
   width: 64px;
   background: var(--bg);

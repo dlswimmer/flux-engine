@@ -4,7 +4,7 @@ import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForOverdrive } from "./reset";
 
-const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
+export const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
 const UNLOCK_REQUIREMENT = 10;
 const BASE_REQUIREMENT = 20; // Engine VIII for the first Overdrive past the unlock phase
 const REQUIREMENT_STEP = 10;
