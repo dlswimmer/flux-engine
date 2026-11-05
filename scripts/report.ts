@@ -407,7 +407,7 @@ function trialsReport() {
     }
   }
   const cell = (x: number) => (Number.isFinite(x) ? formatTime(x) : `> ${TRIAL_GIVE_UP / 60}m`).padStart(12);
-  console.log("Trial run times (one run from a fresh Collapse, 1s bot; > ${TRIAL_GIVE_UP / 60}m = gave up):\n");
+  console.log(`Trial run times (one run from a fresh Collapse, 1s bot; > ${TRIAL_GIVE_UP / 60}m = gave up):\n`);
   console.log("".padEnd(14) + ["Normal run", ...TRIALS.map((d) => d.name)].map((n) => n.padStart(12)).join(""));
   for (const name of wanted) {
     if (!saves[name]) continue;
