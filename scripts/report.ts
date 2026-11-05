@@ -6,7 +6,7 @@
 //   npm run report -- shards        Shard upgrades: time saved before Breach, Shards/min after
 //   npm run report -- rift          Overcharge levels and Rift nodes: Shards/min after Breach
 //   npm run report -- trials        Trial run times at milestones, whole game with/without Trials
-//                                   (add "table" for the table only, "late" for saves before Rifts 2-5)
+//                                   ("table" or "game" for one half, "late" for saves before Rifts 2-5)
 import { formatTime } from "../src/core/format";
 import { deserialize, serialize } from "../src/core/save";
 import { defaultState, replaceState, state } from "../src/core/state";
@@ -25,10 +25,10 @@ import { canOverdrive, doOverdrive } from "../src/game/overdrive";
 import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
-import { TRIALS, trialDef, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
+import { TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
 
-declare const process: { argv: string[] };
+declare const process: { argv: string[]; env: Record<string, string | undefined> };
 
 const DT = 0.1;
 
@@ -111,14 +111,14 @@ export function playthrough(
     }
 
     // Trials: start the next one at the top of a run; give up after TRIAL_GIVE_UP and retry
-    // 5 Collapses later.
+    // after the next Rift.
     if (p.trials) {
       const active = activeTrial();
       if (active && t - trialStart > TRIAL_GIVE_UP) {
         abandonTrial();
-        retryAt[active] = totalCollapses() + 10;
+        retryAt[active] = state.rift.count + 1; // try again after the next Rift
       } else if (!active) {
-        const next = TRIALS.find((d) => !hasTrialReward(d.id) && isTrialAvailable(d.id) && totalCollapses() >= (retryAt[d.id] ?? 0));
+        const next = TRIALS.find((d) => !hasTrialReward(d.id) && isTrialAvailable(d.id) && state.rift.count >= (retryAt[d.id] ?? 0));
         if (next && startTrial(next.id)) trialStart = t;
       }
     }
@@ -185,7 +185,7 @@ const BASE: Player = {
   branch: "order",
 };
 
-const TRIAL_GIVE_UP = 5 * 60;
+const TRIAL_GIVE_UP = Number(process.env.GIVEUP ?? 45) * 60;
 
 const MILESTONES = ["Collapse 1", "Automators", "Breach", "Rift 1", "1st Collapse after R1", "Rift 2", "Rift 3", "Rift 5", "Tree done"];
 
@@ -357,7 +357,8 @@ function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): num
   replaceState(deserialize(save));
   // Saves captured mid-run: start clean. Trials need their prerequisites, so pretend they are won.
   if (trial) {
-    state.trials.completed = TRIALS.filter((d) => d.id !== trial && (trialDef(trial).requires ?? []).includes(d.id)).map((d) => d.id);
+    // Trials are played in order, so the earlier ones' rewards are already won.
+    state.trials.completed = TRIALS.slice(0, TRIALS.findIndex((d) => d.id === trial)).map((d) => d.id);
     if (!startTrial(trial)) return NaN;
   } else resetForCollapseExport();
   const a = state.automation;
@@ -391,6 +392,11 @@ function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): num
 }
 
 function trialsReport() {
+  if (!process.argv.includes("game")) trialTable();
+  if (!process.argv.includes("table")) trialGame();
+}
+
+function trialTable() {
   const late = process.argv.includes("late");
   const wanted = late ? ["Rift 3", "Rift 4", "Rift 5"] : ["Collapse 15", "Foreman", "Breach", "Rift 1", "Rift 2", "Rift 3"];
   const saves: Record<string, string> = {};
@@ -414,7 +420,9 @@ function trialsReport() {
     const row = [oneRun(saves[name], null), ...TRIALS.map((d) => oneRun(saves[name], d.id))];
     console.log(name.padEnd(14) + row.map(cell).join(""));
   }
-  if (process.argv.includes("table")) return;
+}
+
+function trialGame() {
   console.log("\nWhole game, Trials on vs off (Active baseline):\n");
   const marks = ["Collapse 15", ...TRIALS.map((d) => `Trial ${d.name}`), "All Trials", "Breach", "Rift 1", "1st Collapse after R1", "Rift 2", "Rift 3", "Rift 5"];
   for (const p of [BASE, { ...BASE, name: "Active + Trials", trials: true }]) {

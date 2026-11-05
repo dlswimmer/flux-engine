@@ -77,8 +77,8 @@ export function statsTab(): View {
   const hasRifted = () => state.rift.count > 0;
 
   const hasCollapsed = () => totalCollapses() > 0;
-  const owned = (set: { defs: { id: string }[]; has(id: string): boolean }) =>
-    `${set.defs.filter((d) => set.has(d.id)).length} of ${set.defs.length}`;
+  const owned = (set: { defs: { id: string }[]; owns(id: string): boolean }) =>
+    `${set.defs.filter((d) => set.owns(d.id)).length} of ${set.defs.length}`;
 
   const run = statBlock("This run", [
     ["Time in this Collapse", () => formatTime(state.collapse.time)],

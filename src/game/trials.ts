@@ -1,4 +1,5 @@
 import { emit } from "../core/events";
+import { formatTime } from "../core/format";
 import { state } from "../core/state";
 import { canCollapse, doCollapse, totalCollapses } from "./collapse";
 import { resetForCollapse } from "./reset";
@@ -19,13 +20,24 @@ export interface TrialDef {
   requires?: TrialId[];
 }
 
+/*
+ * Tuned with `npm run report -- trials` as an escalating set (1s bot, each Trial with the earlier
+ * ones won): Rigid ~10 min, Overload ~12, Cold ~17, Fixed ~15 before the first Rift; Sprint and
+ * Hollow Core out of reach until after Rift 2 (then ~3-6 and ~40 min).
+ */
+
 /** Seconds Sprint allows to reach the Horizon before the run restarts. */
-export const SPRINT_LIMIT = 30;
-/** Fixed Tempo: the most Tempo levels you can buy. 75: out of reach until about Breach (100 was
- *  possible right after Foreman; 50 never, through Rift 3). */
-export const FIXED_TEMPO_CAP = 75;
-/** Hollow Core's Tempo cap. 150: out of reach until about Rift 3; at 100 no tested save could do it. */
-export const HOLLOW_TEMPO_CAP = 150;
+export const SPRINT_LIMIT = 180;
+/** Fixed Tempo: the most Tempo levels you can buy (150: never by Rift 3; 185: ~7 min). */
+export const FIXED_TEMPO_CAP = 170;
+/** Hollow Core's Tempo cap (200: never by Rift 3). */
+export const HOLLOW_TEMPO_CAP = 300;
+/** Cold Running: overheating slows every Engine, down to this. */
+export const COLD_THROTTLE_FLOOR = 0.6;
+/** Overload: the most Overdrives allowed. Rigid Frame: the most Lattices. */
+export const OVERLOAD_MAX_OVERDRIVES = 6;
+/** 0 (no Lattices) was impossible even after Rift 3. */
+export const RIGID_MAX_LATTICES: number = 1;
 /**
  * Overload / Hollow Core rewards cover the Overdrives and Lattices a well-played run reaches
  * anyway: they remove the reset time, not the ceiling. Unlimited free claims took Flux depth past
@@ -36,23 +48,27 @@ export const FREE_LATTICES = 3;
 /** Sprint's reward: autobuyers act as if you had this many more Collapses this Rift. */
 export const SPRINT_HEAD_START = 10;
 
+// In difficulty order; each assumes you've won the ones before it.
 export const TRIALS: TrialDef[] = [
-  {
-    id: "overload",
-    name: "Overload",
-    rule: "No Overdrives past the 4th.",
-    reward: `Overdrives 5 to ${FREE_OVERDRIVES_UP_TO} reset nothing.`,
-  },
   {
     id: "rigid",
     name: "Rigid Frame",
-    rule: "No Lattices.",
+    rule:
+      RIGID_MAX_LATTICES === 0
+        ? "No Lattices."
+        : `No more than ${RIGID_MAX_LATTICES} Lattice${RIGID_MAX_LATTICES === 1 ? "" : "s"}.`,
     reward: "Lattices keep all your Overdrives.",
+  },
+  {
+    id: "overload",
+    name: "Overload",
+    rule: `No more than ${OVERLOAD_MAX_OVERDRIVES} Overdrives.`,
+    reward: `Overdrives 5 to ${FREE_OVERDRIVES_UP_TO} reset nothing.`,
   },
   {
     id: "cold",
     name: "Cold Running",
-    rule: "Heat can't be vented.",
+    rule: `Heat builds 3× faster, can't be vented, and overheating slows every Engine (down to ×${COLD_THROTTLE_FLOOR}), not just Engine I.`,
     reward: "Surges last 50% longer.",
   },
   {
@@ -64,7 +80,7 @@ export const TRIALS: TrialDef[] = [
   {
     id: "sprint",
     name: "Sprint",
-    rule: `Reach the Horizon within ${SPRINT_LIMIT}s, or the run restarts.`,
+    rule: `Reach the Horizon within ${formatTime(SPRINT_LIMIT)}, or the run restarts.`,
     reward: `Autobuyers start every Rift as if you had ${SPRINT_HEAD_START} Collapses.`,
   },
   {
@@ -72,11 +88,12 @@ export const TRIALS: TrialDef[] = [
     name: "Hollow Core",
     rule: `Overdrives give no multiplier (they still unlock Engines) and Tempo stops at level ${HOLLOW_TEMPO_CAP}.`,
     reward: `Your first ${FREE_LATTICES} Lattices each Collapse reset nothing.`,
-    // Only its two parents: Sprint fits a window before the first Rift, and missing it
-    // shouldn't lock this one away.
     requires: ["overload", "rigid"],
   },
 ];
+
+/** Shard upgrades that still work during a Trial (the rest, and Overcharge, are off). */
+export const TRIAL_KEEPS = ["automators", "automators2", "selfcollapse", "overclock", "thermostat"];
 
 /** Lifetime Collapses that open the Trials. */
 export const TRIALS_UNLOCK = 15;
@@ -97,8 +114,9 @@ export const isTrialAvailable = (id: TrialId) =>
 export function startTrial(id: TrialId): boolean {
   if (!isTrialAvailable(id) || state.trials.active) return false;
   if (canCollapse()) doCollapse();
-  else resetForCollapse();
+  // Reset after the Trial starts, so the run begins without the switched-off upgrades (Ignition).
   state.trials.active = id;
+  resetForCollapse();
   return true;
 }
 

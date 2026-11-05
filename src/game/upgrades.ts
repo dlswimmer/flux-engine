@@ -32,6 +32,8 @@ export class UpgradeSet {
     readonly defs: UpgradeDef[],
     private owned: () => string[],
     private currency: Currency,
+    /** Owned but switched off right now (e.g. during a Trial): has() is false, owns() stays true. */
+    private suppressed: (id: string) => boolean = () => false,
   ) {
     this.byId = new Map(defs.map((d) => [d.id, d]));
   }
@@ -42,8 +44,18 @@ export class UpgradeSet {
     return def;
   }
 
-  has(id: string): boolean {
+  /** Bought (whether or not it is working right now). */
+  owns(id: string): boolean {
     return this.owned().includes(id);
+  }
+
+  /** Bought and working: what game logic checks. */
+  has(id: string): boolean {
+    return this.owns(id) && !this.suppressed(id);
+  }
+
+  isSuppressed(id: string): boolean {
+    return this.owns(id) && this.suppressed(id);
   }
 
   isVisible(id: string): boolean {
@@ -51,11 +63,11 @@ export class UpgradeSet {
   }
 
   isAvailable(id: string): boolean {
-    return this.isVisible(id) && (this.get(id).requires ?? []).every((r) => this.has(r));
+    return this.isVisible(id) && (this.get(id).requires ?? []).every((r) => this.owns(r));
   }
 
   canBuy(id: string): boolean {
-    return !this.has(id) && this.isAvailable(id) && this.currency.get().gte(this.get(id).cost);
+    return !this.owns(id) && this.isAvailable(id) && this.currency.get().gte(this.get(id).cost);
   }
 
   buy(id: string): boolean {

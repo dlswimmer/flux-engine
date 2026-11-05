@@ -30,7 +30,7 @@ function nodeCard(def: UpgradeDef): View {
   return {
     root,
     update() {
-      const owned = riftNodes.has(def.id);
+      const owned = riftNodes.owns(def.id);
       const branch = NODE_INFO[def.id].branch;
       const closed = branch !== "core" && chosenBranch() !== null && chosenBranch() !== branch;
       setClass(root, "owned", owned);

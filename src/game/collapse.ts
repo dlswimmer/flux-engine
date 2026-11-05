@@ -4,7 +4,7 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
-import { completeActiveTrial } from "./trials";
+import { TRIAL_KEEPS, activeTrial, completeActiveTrial } from "./trials";
 import { riftShardMult } from "./rift";
 import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
@@ -138,6 +138,8 @@ export const shardUpgrades = new UpgradeSet(
   ],
   () => state.collapse.upgrades,
   { get: () => state.collapse.shards, set: (v) => (state.collapse.shards = v) },
+  // In a Trial only the automation upgrades work: every Trial is a raw Collapse plus its rule.
+  (id) => activeTrial() !== null && !TRIAL_KEEPS.includes(id),
 );
 
 export const isBreached = () => shardUpgrades.has("breach");
@@ -239,8 +241,11 @@ const OVERCHARGE_MULT = 10;
 
 export const isOverchargeUnlocked = () => isBreached();
 // Exact for normal levels: Decimal.pow(2, 13) comes out as 8191.99..., shown as ×8,191.
+/** Off during a Trial, like the Shard upgrades. */
 export const overchargeMult = () =>
-  state.collapse.overcharge <= 1000 ? D(OVERCHARGE_MULT ** state.collapse.overcharge) : D(OVERCHARGE_MULT).pow(state.collapse.overcharge);
+  activeTrial() !== null
+    ? D(1)
+    : state.collapse.overcharge <= 1000 ? D(OVERCHARGE_MULT ** state.collapse.overcharge) : D(OVERCHARGE_MULT).pow(state.collapse.overcharge);
 export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(OVERCHARGE_COST_GROWTH).pow(state.collapse.overcharge));
 export const canBuyOvercharge = () => isOverchargeUnlocked() && state.collapse.shards.gte(overchargeCost());
 

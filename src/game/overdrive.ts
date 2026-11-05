@@ -3,7 +3,7 @@ import { D } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForOverdrive } from "./reset";
-import { FREE_OVERDRIVES_UP_TO, hasTrialReward, inTrial } from "./trials";
+import { FREE_OVERDRIVES_UP_TO, OVERLOAD_MAX_OVERDRIVES, hasTrialReward, inTrial } from "./trials";
 
 export const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
 const UNLOCK_REQUIREMENT = 10;
@@ -30,9 +30,9 @@ export const overdriveRequirement = () => requirementAt(state.overdrives);
 export function overdrivesAvailable(limit = Infinity): number {
   const { tier, amount } = overdriveRequirement();
   const have = state.engines[tier].amount;
+  if (inTrial("overload")) limit = Math.min(limit, OVERLOAD_MAX_OVERDRIVES - state.overdrives);
   if (limit < 1 || have.lt(amount)) return 0;
   if (state.overdrives < UNLOCK_PHASE) return 1;
-  if (inTrial("overload")) return 0;
   const extra = Math.floor(have.sub(amount).div(REQUIREMENT_STEP).toNumber());
   // A free claim (Overload reward) stops at the last free one, so a reset never sneaks in with it.
   const freeLeft = overdriveResetsNothing() ? FREE_OVERDRIVES_UP_TO - state.overdrives : Infinity;

@@ -66,8 +66,9 @@ export function trialsTab(): View {
     h(
       "p",
       { class: "trial-intro" },
-      "Replay a Collapse under a rule. Reach the Horizon and Collapse to win its reward for good: Rifts keep them. " +
-        "None are needed for the Rift, and some are out of reach until you're much stronger.",
+      "Replay a Collapse from scratch under a rule: your Shard upgrades and Overcharge are off, except automation. " +
+        "Reach the Horizon and Collapse to win its reward for good (Rifts keep them). " +
+        "None are needed for the Rift, and the later ones are out of reach until you're much stronger.",
     ),
     bannerPanel,
     h("div", { class: "trial-grid" }, ...cards.map((c) => c.root)),

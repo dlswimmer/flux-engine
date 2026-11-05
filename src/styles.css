@@ -561,3 +561,4 @@ textarea {
 
   .toasts { left: 12px; right: 12px; bottom: calc(140px + env(safe-area-inset-bottom)); }
 }
+.upgrade.suppressed { opacity: 0.5; }

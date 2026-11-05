@@ -2,7 +2,7 @@ import { D, Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { HORIZON, collapseEngineMult, shardUpgrades } from "./collapse";
 import { addFlux } from "./flux";
-import { fluxThrottle, surgeMult } from "./heat";
+import { fluxThrottle, surgeMult, throttlesAllEngines } from "./heat";
 import { overdriveMult } from "./overdrive";
 import { riftEngineMult } from "./rift";
 import { buyMaxTempo, tempoMult } from "./tempo";
@@ -101,7 +101,7 @@ export function engineMult(tier: number): Decimal {
   const engine = state.engines[tier];
   let mult = D(MILESTONE_MULT).pow(Math.floor(engine.bought / MILESTONE_SIZE));
   mult = mult.mul(overdriveMult()).mul(collapseEngineMult()).mul(riftEngineMult()).mul(surgeMult());
-  if (tier === 0) mult = mult.mul(fluxThrottle());
+  if (tier === 0 || throttlesAllEngines()) mult = mult.mul(fluxThrottle());
   if (shardUpgrades.has("cascade") && tier < ENGINE_COUNT - 1) {
     mult = mult.mul(1 + state.engines[tier + 1].bought * 0.02);
   }

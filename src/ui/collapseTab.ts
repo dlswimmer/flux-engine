@@ -62,12 +62,14 @@ export function upgradeCard(set: UpgradeSet, def: UpgradeDef, currencyName: stri
     root,
     update() {
       setVisible(root, set.isVisible(def.id));
-      const owned = set.has(def.id);
+      const owned = set.owns(def.id);
+      const off = set.isSuppressed(def.id);
+      setClass(root, "suppressed", off);
       setClass(root, "owned", owned);
       setClass(root, "affordable", set.canBuy(def.id));
       setClass(root, "locked", !owned && !set.isAvailable(def.id));
       setText(effect, def.effect && def.effectText ? `Currently ${def.effectText(def.effect())}` : "");
-      setText(cost, owned ? "Owned" : `${formatInt(def.cost)} ${currencyName}`);
+      setText(cost, off ? "Owned · off during this Trial" : owned ? "Owned" : `${formatInt(def.cost)} ${currencyName}`);
     },
   };
 }

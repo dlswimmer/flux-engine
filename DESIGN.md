@@ -73,18 +73,19 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 - Reset autobuyers stop at a per-Collapse limit (defaults: 10 Overdrives, 1 Lattice; blank = no limit). They also **pause at the Horizon** (a visible switch, on by default): after Breach runs reach the Horizon in ~2s, and resets after that restart the run from 10 Flux. With the pause off, Shard income at Overcharge 15 fell from ~650/min to ~230/min and the first Rift came 26 min later. Shown on the cards as "paused: you can Collapse", because a silent pause looked broken. Sim, fully automated: an unlimited Lattice autobuyer without Latticeworks makes Collapse 23 runs ~70% slower (43s vs 25s), since every Lattice wipes the Overdrives; with Latticeworks the Lattice count barely matters (20-23s). ~10 Overdrives beats unlimited (24s vs 28s).
 - *Momentum* is capped at ×3 (uncapped it was ×6 on a slow run, 62% alone). *Resonance* is "Overdrives ×2.25 instead of ×2" (the old unspent-Shards version was worth 0% because Shards get spent). *Latticeworks* keeps up to 4 Overdrives through a Lattice, so Engines V–VIII stay unlocked but the extra ×2s still reset. Without it, Lattice is skipped once runs are under ~2 min. With it, Lattice routes are 15–25% faster than skipping (Collapse 15–30), in line with other upgrades. Keeping every Overdrive tested about the same but removed the visible cost.
 - **Collapse Trials** (built: `game/trials.ts`, tuned with `npm run report -- trials`): open at 15 lifetime Collapses. Start one (Collapses first if you can, else restarts the run), reach the Horizon under its rule, Collapse to win. Wins are permanent, kept through Rifts, and none is needed for the Rift. A Rift ends an active Trial.
+  - **A Trial is a raw Collapse:** Shard upgrades and Overcharge are off during one, except automation (Automators, Foreman, Self-Collapse, Overclock, Thermostat). Rift nodes and earlier Trial rewards still work, which is what makes the later ones possible. Like AD's challenges, each takes much longer than a normal run at that point. (v1 kept every upgrade, and Trials took ~1 min, Overload faster than a normal run.)
+  - Escalating, in this order (1s bot, each with the earlier ones won):
 
-  | Trial | Rule | Reward | First possible (1s bot) |
+  | Trial | Rule | Reward | Time (1s bot) |
   | --- | --- | --- | --- |
-  | Overload | no Overdrives past the 4th | Overdrives 5-10 reset nothing | at unlock (~1 min) |
-  | Rigid Frame | no Lattices | Lattices keep all Overdrives | at unlock |
-  | Cold Running | no venting | Surges 50% longer | at unlock |
-  | Sprint | Horizon within 30s or the run restarts | autobuyers start each Rift as if 10 Collapses in | Foreman to Breach (runs right after a Rift are too slow) |
-  | Fixed Tempo | Tempo stops at 75 | Tempo ×7/level instead of ×8 (×4096 past the Horizon unchanged) | ~Breach (2m26s; 100 was doable at Foreman, 50 never) |
-  | Hollow Core (needs Overload + Rigid) | Overdrives ×1 and Tempo stops at 150 | first 3 Lattices each Collapse reset nothing | ~Breach (55s; at Tempo 100 never) |
+  | Rigid Frame | at most 1 Lattice (0 was impossible even after Rift 3) | Lattices keep all Overdrives | ~10 min |
+  | Overload | at most 6 Overdrives | Overdrives 5-10 reset nothing | ~12 min |
+  | Cold Running | Heat 3× faster, no venting, overheating slows every Engine to ×0.6 | Surges 50% longer | ~17 min |
+  | Fixed Tempo | Tempo stops at 170 (150 never; 185 ~7 min) | Tempo ×7/level instead of ×8 (×4096 past the Horizon unchanged) | ~15 min (43 min before Foreman) |
+  | Sprint | Horizon within 3 min or the run restarts (raw runs take ~5 min before Rift 2) | autobuyers start each Rift as if 10 Collapses in | out of reach until after Rift 2, then 3-6 min |
+  | Hollow Core (needs Rigid + Overload) | Overdrives ×1 and Tempo stops at 300 (200 never) | first 3 Lattices each Collapse reset nothing | out of reach until after Rift 2, then ~40 min |
 
   - *Why capped rewards:* unlimited free Overdrives/Lattices blew up depth past the Horizon (Rift 3 to Rift 5 in 2½ min). Free claims now cover what a well-played run reaches anyway (OD 10, Lattice 3): they remove the reset time, not the ceiling. Free claims skip Stop-at, the wait and the Horizon pause.
-  - *Strongest point in the game is the end of the first Rift run:* each Rift resets the Collapse count, and later Rifts never get back there with the current content (a run right before Rift 2-5 takes ~1 min vs ~19s at the first Breach). So "out of reach until later" Trials land around Breach for now; Rift Trials or Ascension can bring harder ones.
   - Whole game, baseline vs + Trials: Rift 1 1h47m / 1h50m; 1st Collapse after Rift 1 **7m05s / 2m37s**; Rift 5 3h32m / 2h20m. Not Sprint (without its reward: 3m00s): it is free Overdrives/Lattices removing the staircase, which hits hardest right after a Rift. Breaks the "half the very first Collapse" target, on purpose (decided 2026-11-05): the Trials themselves are the cost, so earning them buys the faster Rifts. The half-time target applies to a player without the Trials.
   - Fixed along the way: auto-Collapse tracked Shards/sec with the whole-number gain, whose plateaus (3, 3, 3...) read as the rate falling and Collapsed at 0.65s for 3 Shards; it uses the unrounded gain now.
 - **Next:** Rift Trials stacking Collapse Trial rules, and a Shard-powered second generator family.

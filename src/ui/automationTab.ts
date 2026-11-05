@@ -119,7 +119,7 @@ function waitSetting(get: () => number, set: (v: number) => void) {
 }
 
 const lockedUntil = (id: string) => () =>
-  shardUpgrades.has(id) ? null : `Buy ${shardUpgrades.get(id).name} (${shardUpgrades.get(id).cost} Shards) to unlock.`;
+  shardUpgrades.owns(id) ? null : `Buy ${shardUpgrades.get(id).name} (${shardUpgrades.get(id).cost} Shards) to unlock.`;
 
 export function automationTab(): View {
   const speed = h("p", { class: "auto-speed-line" });

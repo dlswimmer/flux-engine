@@ -2,7 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
-import { hasTrialReward, inTrial } from "./trials";
+import { COLD_THROTTLE_FLOOR, hasTrialReward, inTrial } from "./trials";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
 // throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
@@ -12,6 +12,8 @@ import { hasTrialReward, inTrial } from "./trials";
 export const HEAT_MAX = 100;
 export const THROTTLE_START = 60;
 const THROTTLE_FLOOR = 0.8;
+/** Cold Running (Trial): Heat builds this much faster and the throttle hits every Engine. */
+const COLD_HEAT_SPEED = 3;
 // Time constant in seconds with all 8 tiers running. Fast on purpose: Heat is frozen
 // during a Surge, so this sets how soon the next vent comes (sim: active ~20% faster than idle).
 const FILL_TIME = 8;
@@ -31,18 +33,23 @@ export function updateHeat(dt: number) {
   // this tick after the Surge ends counts (matters for big offline-catch-up ticks).
   const heatingTime = Math.max(0, dt - heat.surgeTime);
   heat.surgeTime = Math.max(0, heat.surgeTime - dt);
-  const rate = (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1);
+  const rate =
+    (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) * (inTrial("cold") ? COLD_HEAT_SPEED : 1);
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
   heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
   if (hasNode("even-keel")) heat.amount = Math.min(heat.amount, THROTTLE_START);
   if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
 }
 
+/** Cold Running throttles every Engine, not just Engine I. */
+export const throttlesAllEngines = () => inTrial("cold");
+
 /** Multiplier on Flux output from overheating: 1 up to THROTTLE_START, down to THROTTLE_FLOOR at max. */
 export function fluxThrottle(): number {
   const h = state.heat.amount;
   if (!isHeatUnlocked() || h <= THROTTLE_START || hasNode("backdraft")) return 1;
-  return 1 - ((1 - THROTTLE_FLOOR) * (h - THROTTLE_START)) / (HEAT_MAX - THROTTLE_START);
+  const floor = inTrial("cold") ? COLD_THROTTLE_FLOOR : THROTTLE_FLOOR;
+  return 1 - ((1 - floor) * (h - THROTTLE_START)) / (HEAT_MAX - THROTTLE_START);
 }
 
 const surgeMax = () => (shardUpgrades.has("exchanger") ? 5 : 4) * (hasNode("flashpoint") ? 2 : 1);
