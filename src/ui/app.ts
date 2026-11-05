@@ -17,6 +17,9 @@ import { headerView } from "./header";
 import { optionsTab } from "./optionsTab";
 import { statsTab } from "./statsTab";
 import { notify } from "./toast";
+import { trialsTab } from "./trialsTab";
+import { TRIALS, isTrialsUnlocked } from "../game/trials";
+import { on } from "../core/events";
 
 interface Tab {
   id: string;
@@ -33,6 +36,7 @@ const room = engineRoomTab(() => state.ui.tab === "room");
 const TABS: Tab[] = [
   { id: "engines", label: "Engines", unlocked: () => true, view: enginesTab() },
   { id: "collapse", label: "Collapse", unlocked: isCollapseUnlocked, view: collapseTab() },
+  { id: "trials", label: "Trials", unlocked: isTrialsUnlocked, view: trialsTab() },
   { id: "automation", label: "Automation", short: "Auto", unlocked: isAutomationUnlocked, view: automationTab() },
   { id: "rift", label: "Rift", unlocked: isRiftUnlocked, view: riftTab() },
   { id: "stats", label: "Stats", unlocked: () => true, view: statsTab() },
@@ -75,7 +79,20 @@ export function mountUI(root: HTMLElement) {
     HOTKEYS[e.key.toLowerCase()]?.();
   });
 
+  // Trial wins: the Trial is already over by the time this runs, so find the newest win.
+  let wins = state.trials.completed.length;
+  on("trial", () => {
+    const won = state.trials.completed.length > wins;
+    wins = state.trials.completed.length;
+    const def = TRIALS.find((d) => d.id === state.trials.completed[state.trials.completed.length - 1]);
+    if (won && def) notify(`Trial won: ${def.name}. ${def.reward}`, 8000);
+  });
+
   const render = () => {
+    if (isTrialsUnlocked() && !state.trials.introduced) {
+      state.trials.introduced = true;
+      notify("Trials unlocked: replay a Collapse under a rule for a permanent reward. See the Trials tab.", 8000);
+    }
     if (isHeatUnlocked() && !state.heat.introduced) {
       state.heat.introduced = true;
       notify(`Heat unlocked: your Engines now run hot. Vent${keyHint("V")} to turn Heat into a Surge.`, 8000);

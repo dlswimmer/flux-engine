@@ -3,6 +3,7 @@ import { defaultEngines, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetHeat } from "./heat";
 import { hasNode, keptShardUpgrades } from "./rift";
+import { hasTrialReward } from "./trials";
 
 // Each reset wipes everything below its own layer, then keeps what upgrades say to keep.
 // New prestige layers add a resetForX that calls the one below it.
@@ -27,7 +28,12 @@ export function resetForLattice() {
   resetEngineFloor();
   // Latticeworks keeps the 4 Overdrives that unlock Engines V–VIII; the extra ×2s still reset.
   // Without it, short late runs skip Lattice entirely: rebuilding costs more than it gives.
-  const kept = shardUpgrades.has("latticeworks") ? Math.min(state.overdrives, LATTICEWORKS_KEEPS) : 0;
+  // Rigid Frame (Trial reward) keeps them all.
+  const kept = hasTrialReward("rigid")
+    ? state.overdrives
+    : shardUpgrades.has("latticeworks")
+      ? Math.min(state.overdrives, LATTICEWORKS_KEEPS)
+      : 0;
   state.overdrives = Math.max(kept, minOverdrives());
 }
 
@@ -77,6 +83,7 @@ export function resetForRift() {
   state.stats.collapses = Math.max(state.stats.collapses, state.collapse.count);
   state.collapse.count = 0;
   state.collapse.bestTime = Infinity;
+  state.trials.active = null; // a Rift ends any Trial (its completions stay)
   const kept = keptShardUpgrades();
   state.collapse.upgrades = state.collapse.upgrades.filter((id) => kept.includes(id));
   resetForCollapse();

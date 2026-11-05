@@ -4,6 +4,7 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
+import { completeActiveTrial } from "./trials";
 import { riftShardMult } from "./rift";
 import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
@@ -175,7 +176,15 @@ export function trackPeakShardGain() {
 }
 
 /** Shard gain if you Collapsed right now. */
-function currentShardGain(): Decimal {
+const currentShardGain = (): Decimal => exactShardGain().floor().max(1);
+
+/**
+ * Gain before rounding down to whole Shards. Auto-Collapse tracks Shards/sec with this: the
+ * whole-number gain sits on plateaus (3, 3, 3...) while time ticks on, which read as the rate
+ * falling and Collapsed runs at 0.65s for 3 Shards instead of ~1s for 40.
+ */
+export function exactShardGain(): Decimal {
+  if (!canCollapse()) return D(0);
   let gain = isBreached()
     ? Decimal.pow(10, state.collapse.peakFlux.log10().div(HORIZON_LOG).sub(0.75))
     : D(1);
@@ -183,7 +192,7 @@ function currentShardGain(): Decimal {
   gain = gain.mul(riftShardMult());
   // After Breach, Heat pays in Shards too: Engine multipliers barely move Shards (a ×2 is ~×1.06).
   if (isBreached()) gain = gain.mul(heatShardMult());
-  return gain.floor().max(1);
+  return gain;
 }
 
 export function doCollapse(): boolean {
@@ -198,6 +207,7 @@ export function doCollapse(): boolean {
     { number: state.stats.collapses, time: state.collapse.time, shards: gain, rift: state.rift.count },
   ].slice(-COLLAPSE_HISTORY);
   state.collapse.bestTime = Math.min(state.collapse.bestTime, state.collapse.time);
+  completeActiveTrial();
   resetForCollapse();
   emit("collapse");
   return true;

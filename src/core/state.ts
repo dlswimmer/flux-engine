@@ -119,6 +119,16 @@ export interface GameState {
   };
 
   /** collapses: lifetime Collapse count (collapse.count is this Rift's; a Rift resets it). */
+  /** Collapse Trials (game/trials.ts). Completions are permanent, even through a Rift. */
+  trials: {
+    active: string | null;
+    completed: string[];
+    /** Fastest win per Trial, in seconds. */
+    best: Record<string, number>;
+    sprintRestarts: number;
+    introduced: boolean;
+  };
+
   stats: {
     timePlayed: number;
     totalFlux: Decimal;
@@ -188,6 +198,8 @@ export function defaultState(): GameState {
       collapse: true,
       collapseShards: 0,
     },
+
+    trials: { active: null, completed: [], best: {}, sprintRestarts: 0, introduced: false },
 
     stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0, shardsEarned: D(0), overdrives: 0, lattices: 0 },
     options: { autosave: true, offlineProgress: true, devSpeed: 1 },

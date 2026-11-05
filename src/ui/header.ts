@@ -3,6 +3,7 @@ import { state } from "../core/state";
 import { HORIZON, canCollapse, doCollapse, isCollapseUnlocked, shardGain } from "../game/collapse";
 import { fluxPerSecond, horizonDrag } from "../game/engines";
 import { h, setClass, setText, setVisible, type View } from "./dom";
+import { SPRINT_LIMIT, activeTrial, trialDef } from "../game/trials";
 
 export function headerView(): View {
   const flux = h("span", { class: "big-number" });
@@ -43,7 +44,14 @@ export function headerView(): View {
       // Peak, not current: spending or an Overdrive shouldn't make the bar fall back.
       const pct = Math.min(100, Math.max(0, (state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog) * 100));
       fill.style.width = `${pct}%`;
-      setText(progressLabel, pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`);
+      const trial = activeTrial();
+      const sprintLeft = trial === "sprint" && pct < 100 ? ` (${Math.max(0, SPRINT_LIMIT - state.collapse.time).toFixed(0)}s)` : "";
+      setText(
+        progressLabel,
+        (pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`) +
+          (trial ? ` · Trial: ${trialDef(trial).name}${sprintLeft}` : ""),
+      );
+      setClass(root, "in-trial", trial !== null);
 
       setVisible(shards, isCollapseUnlocked());
       setText(

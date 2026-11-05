@@ -5,6 +5,8 @@
 //   npm run report -- milestones    strategy comparison, fresh save to 5 Rifts
 //   npm run report -- shards        Shard upgrades: time saved before Breach, Shards/min after
 //   npm run report -- rift          Overcharge levels and Rift nodes: Shards/min after Breach
+//   npm run report -- trials        Trial run times at milestones, whole game with/without Trials
+//                                   (add "table" for the table only, "late" for saves before Rifts 2-5)
 import { formatTime } from "../src/core/format";
 import { deserialize, serialize } from "../src/core/save";
 import { defaultState, replaceState, state } from "../src/core/state";
@@ -22,6 +24,9 @@ import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
 import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
+import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
+import { TRIALS, trialDef, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
+import { totalCollapses } from "../src/game/collapse";
 
 declare const process: { argv: string[] };
 
@@ -40,6 +45,8 @@ export interface Player {
   /** Rift once a Rift gives this much Essence. */
   riftAt: number;
   branch: "order" | "entropy";
+  /** Play the Collapse Trials in order as they open (giving up on one after TRIAL_GIVE_UP). */
+  trials?: boolean;
 }
 
 const NODE_PLAN = {
@@ -80,6 +87,8 @@ export function playthrough(
   let t = 0;
   let since = 0;
   let bestRate = 0;
+  let trialStart = 0;
+  const retryAt: Partial<Record<TrialId, number>> = {};
   const actEvery = Math.round(p.every / DT);
   let step = 0;
   while (t < limit && state.rift.count < rifts) {
@@ -101,6 +110,19 @@ export function playthrough(
       continue;
     }
 
+    // Trials: start the next one at the top of a run; give up after TRIAL_GIVE_UP and retry
+    // 5 Collapses later.
+    if (p.trials) {
+      const active = activeTrial();
+      if (active && t - trialStart > TRIAL_GIVE_UP) {
+        abandonTrial();
+        retryAt[active] = totalCollapses() + 10;
+      } else if (!active) {
+        const next = TRIALS.find((d) => !hasTrialReward(d.id) && isTrialAvailable(d.id) && totalCollapses() >= (retryAt[d.id] ?? 0));
+        if (next && startTrial(next.id)) trialStart = t;
+      }
+    }
+
     // Collapse layer
     // Spending and milestones every action: auto-Collapse may have Collapsed in between.
     const spend = () => {
@@ -111,6 +133,9 @@ export function playthrough(
       if (state.rift.count === 1 && c >= 1 && ms["Rift 1"] !== undefined && ms["1st Collapse after R1"] === undefined)
         ms["1st Collapse after R1"] = t - ms["Rift 1"];
       if (c >= 10) mark("Collapse 10");
+      if (totalCollapses() >= 15) mark("Collapse 15");
+      for (const d of TRIALS) if (hasTrialReward(d.id)) mark(`Trial ${d.name}`);
+      if (TRIALS.every((d) => hasTrialReward(d.id))) mark("All Trials");
       buyUpgrades(p.upgradeOrder);
       if (shardUpgrades.has("automators")) mark("Automators");
       if (shardUpgrades.has("automators2")) mark("Foreman");
@@ -159,6 +184,8 @@ const BASE: Player = {
   riftAt: 4,
   branch: "order",
 };
+
+const TRIAL_GIVE_UP = 5 * 60;
 
 const MILESTONES = ["Collapse 1", "Automators", "Breach", "Rift 1", "1st Collapse after R1", "Rift 2", "Rift 3", "Rift 5", "Tree done"];
 
@@ -323,7 +350,82 @@ function devSaves() {
   console.log(`Wrote ${out.length} milestone saves: ${out.map((o) => `${o.name} (${formatTime(o.time)})`).join(", ")}`);
 }
 
+// ---------- Trials ----------
+
+/** One run from a fresh Collapse (or Trial) to the next Collapse, 1s-cadence bot. Infinity = gave up. */
+function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): number {
+  replaceState(deserialize(save));
+  // Saves captured mid-run: start clean. Trials need their prerequisites, so pretend they are won.
+  if (trial) {
+    state.trials.completed = TRIALS.filter((d) => d.id !== trial && (trialDef(trial).requires ?? []).includes(d.id)).map((d) => d.id);
+    if (!startTrial(trial)) return NaN;
+  } else resetForCollapseExport();
+  const a = state.automation;
+  if (shardUpgrades.has("automators2")) {
+    a.overdrive = a.lattice = true;
+    a.overdriveMax = 10;
+    a.latticeMax = shardUpgrades.has("latticeworks") ? 3 : 1;
+  }
+  a.collapse = true;
+  a.collapseShards = 0;
+  const start = state.collapse.count;
+  let t = 0;
+  let step = 0;
+  while (t < limit) {
+    tick(DT);
+    t += DT;
+    if (state.collapse.count > start) return t;
+    if (isHeatUnlocked() && state.heat.amount >= 75) vent();
+    if (++step % 10) continue;
+    if (canCollapse() && !(isBreached() && shardUpgrades.has("selfcollapse"))) {
+      doCollapse();
+      return t;
+    }
+    if (!shardUpgrades.has("automators2")) {
+      if (state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
+      else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
+    }
+    maxAll();
+  }
+  return Infinity;
+}
+
+function trialsReport() {
+  const late = process.argv.includes("late");
+  const wanted = late ? ["Rift 3", "Rift 4", "Rift 5"] : ["Collapse 15", "Foreman", "Breach", "Rift 1", "Rift 2", "Rift 3"];
+  const saves: Record<string, string> = {};
+  const ms = playthrough(BASE, late ? 5 : 3, 8 * 3600, (name) => {
+    if (wanted.includes(name)) saves[name] = serialize(state);
+  });
+  if (late) {
+    // Just before each Rift: the strongest point of that Rift (right after one, runs are slow again).
+    wanted.length = 0;
+    for (const r of [2, 3, 4, 5]) {
+      playthrough(BASE, r, ms[`Rift ${r}`] - 1);
+      saves[`Before Rift ${r}`] = serialize(state);
+      wanted.push(`Before Rift ${r}`);
+    }
+  }
+  const cell = (x: number) => (Number.isFinite(x) ? formatTime(x) : `> ${TRIAL_GIVE_UP / 60}m`).padStart(12);
+  console.log("Trial run times (one run from a fresh Collapse, 1s bot; > ${TRIAL_GIVE_UP / 60}m = gave up):\n");
+  console.log("".padEnd(14) + ["Normal run", ...TRIALS.map((d) => d.name)].map((n) => n.padStart(12)).join(""));
+  for (const name of wanted) {
+    if (!saves[name]) continue;
+    const row = [oneRun(saves[name], null), ...TRIALS.map((d) => oneRun(saves[name], d.id))];
+    console.log(name.padEnd(14) + row.map(cell).join(""));
+  }
+  if (process.argv.includes("table")) return;
+  console.log("\nWhole game, Trials on vs off (Active baseline):\n");
+  const marks = ["Collapse 15", ...TRIALS.map((d) => `Trial ${d.name}`), "All Trials", "Breach", "Rift 1", "1st Collapse after R1", "Rift 2", "Rift 3", "Rift 5"];
+  for (const p of [BASE, { ...BASE, name: "Active + Trials", trials: true }]) {
+    const ms = playthrough(p);
+    console.log(p.name);
+    console.log("  " + marks.filter((m) => ms[m] !== undefined).map((m) => `${m.replace("Trial ", "")} ${formatTime(ms[m])}`).join(" · "));
+  }
+}
+
 const mode = process.argv[2] ?? "all";
+if (mode === "trials") trialsReport();
 if (mode === "devsaves") devSaves();
 const VALUE_ORDER = process.argv.find((a) => a.startsWith("order="))?.slice(6).split(",") ?? [];
 const only = process.argv.includes("only-order");

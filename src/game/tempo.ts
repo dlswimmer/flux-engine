@@ -2,9 +2,13 @@ import { D, Decimal } from "../lib/decimal";
 import { state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { latticeTempoBonus } from "./lattice";
+import { FIXED_TEMPO_CAP, HOLLOW_TEMPO_CAP, hasTrialReward, inTrial } from "./trials";
 
 const BASE_COST = 1e3;
 const COST_GROWTH = 8;
+/** Fixed Tempo (Trial reward). Past the Horizon the ×4096 scaling still applies. */
+const REWARD_COST_GROWTH = 7;
+const costGrowth = () => (hasTrialReward("fixed") ? REWARD_COST_GROWTH : COST_GROWTH);
 const BASE_FACTOR = 1.1;
 
 /**
@@ -33,10 +37,13 @@ export const tempoMult = () => tempoFactor().pow(state.tempo);
 
 export const tempoCost = () =>
   state.tempo < SCALING_START
-    ? D(BASE_COST).mul(D(COST_GROWTH).pow(state.tempo))
+    ? D(BASE_COST).mul(D(costGrowth()).pow(state.tempo))
     : SCALED_BASE.mul(D(SCALED_COST_GROWTH).pow(state.tempo - SCALING_START));
 
-export const canBuyTempo = () => isTempoUnlocked() && state.flux.gte(tempoCost());
+/** Fixed Tempo and Hollow Core (Trials) cap the level. */
+const tempoCap = () => (inTrial("fixed") ? FIXED_TEMPO_CAP : inTrial("hollow") ? HOLLOW_TEMPO_CAP : Infinity);
+
+export const canBuyTempo = () => isTempoUnlocked() && state.tempo < tempoCap() && state.flux.gte(tempoCost());
 
 export function buyTempo(): boolean {
   if (!canBuyTempo()) return false;
@@ -57,10 +64,11 @@ function buySegment(base: Decimal, growth: number, offset: number, limit: number
 
 export function buyMaxTempo(): number {
   if (!isTempoUnlocked()) return 0;
+  const cap = tempoCap();
   let bought = 0;
   if (state.tempo < SCALING_START)
-    bought += buySegment(D(BASE_COST), COST_GROWTH, state.tempo, SCALING_START - state.tempo);
+    bought += buySegment(D(BASE_COST), costGrowth(), state.tempo, Math.min(SCALING_START, cap) - state.tempo);
   if (state.tempo >= SCALING_START)
-    bought += buySegment(SCALED_BASE, SCALED_COST_GROWTH, state.tempo - SCALING_START, Infinity);
+    bought += buySegment(SCALED_BASE, SCALED_COST_GROWTH, state.tempo - SCALING_START, cap - state.tempo);
   return bought;
 }

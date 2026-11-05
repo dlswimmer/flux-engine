@@ -56,7 +56,7 @@ interface Effect {
 }
 
 const MAX_PARTICLES = 450;
-const DURATION: Record<GameEvent, number> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4 };
+const DURATION: Record<GameEvent, number> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4, trial: 2 };
 
 export function engineRoomTab(isActive: () => boolean): View & { leave(): void } {
   const canvas = h("canvas", { class: "room-canvas" });
@@ -370,6 +370,17 @@ export function engineRoomTab(isActive: () => boolean): View & { leave(): void }
             ctx.lineTo(ox + dx * diag, oy + dy * diag);
             ctx.stroke();
           }
+        }
+      } else if (e.kind === "trial") {
+        // A Trial won: three gold rings ripple out from the core.
+        for (let i = 0; i < 3; i++) {
+          const ki = k * 1.4 - i * 0.2;
+          if (ki <= 0 || ki >= 1) continue;
+          ctx.strokeStyle = rgba([255, 205, 90], (1 - ki) * 0.8);
+          ctx.lineWidth = 2 + 2 * (1 - ki);
+          ctx.beginPath();
+          ctx.arc(cx, cy, core + ki * (outer * 1.2 - core), 0, Math.PI * 2);
+          ctx.stroke();
         }
       } else if (e.kind === "collapse" && k > 0.55) {
         const flash = 1 - (k - 0.55) / 0.45;

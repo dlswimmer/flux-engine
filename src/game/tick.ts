@@ -3,6 +3,7 @@ import { runAutomation } from "./automation";
 import { produce } from "./engines";
 import { updateHeat } from "./heat";
 import { trackPeakShardGain } from "./collapse";
+import { updateTrials } from "./trials";
 
 /** Advance the game by `dt` seconds. Pure game logic, no DOM, so the sim can run it headless. */
 export function tick(dt: number) {
@@ -14,4 +15,5 @@ export function tick(dt: number) {
   updateHeat(dt);
   produce(dt);
   trackPeakShardGain();
+  updateTrials();
 }

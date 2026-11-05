@@ -3,6 +3,7 @@ import { D } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForOverdrive } from "./reset";
+import { FREE_OVERDRIVES_UP_TO, hasTrialReward, inTrial } from "./trials";
 
 export const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
 const UNLOCK_REQUIREMENT = 10;
@@ -31,8 +32,11 @@ export function overdrivesAvailable(limit = Infinity): number {
   const have = state.engines[tier].amount;
   if (limit < 1 || have.lt(amount)) return 0;
   if (state.overdrives < UNLOCK_PHASE) return 1;
+  if (inTrial("overload")) return 0;
   const extra = Math.floor(have.sub(amount).div(REQUIREMENT_STEP).toNumber());
-  return Math.min(limit, 1 + extra);
+  // A free claim (Overload reward) stops at the last free one, so a reset never sneaks in with it.
+  const freeLeft = overdriveResetsNothing() ? FREE_OVERDRIVES_UP_TO - state.overdrives : Infinity;
+  return Math.min(limit, freeLeft, 1 + extra);
 }
 
 /** Requirement of the Overdrive after the ones you could claim now ("one more at …"). */
@@ -40,16 +44,22 @@ export const nextOverdriveRequirement = () => requirementAt(state.overdrives + o
 
 export const canOverdrive = () => overdrivesAvailable() > 0;
 
+/** Overload (Trial reward): Overdrives past the unlock phase cost no reset. */
+export const overdriveResetsNothing = () =>
+  hasTrialReward("overload") && state.overdrives >= UNLOCK_PHASE && state.overdrives < FREE_OVERDRIVES_UP_TO;
+
 /** Claims every Overdrive your Engines cover (up to `limit`), with one reset. */
 export function doOverdrive(limit = Infinity): boolean {
   const count = overdrivesAvailable(limit);
   if (count < 1) return false;
+  const free = overdriveResetsNothing();
   state.overdrives += count;
   state.stats.overdrives += count;
-  resetForOverdrive();
+  if (!free) resetForOverdrive();
   emit("overdrive");
   return true;
 }
 
 export const overdriveFactor = () => (shardUpgrades.has("resonance") ? 2.25 : 2);
-export const overdriveMult = () => D(overdriveFactor()).pow(state.overdrives);
+/** Hollow Core (Trial): Overdrives still unlock Engines but multiply nothing. */
+export const overdriveMult = () => (inTrial("hollow") ? D(1) : D(overdriveFactor()).pow(state.overdrives));

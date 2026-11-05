@@ -2,6 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
+import { hasTrialReward, inTrial } from "./trials";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
 // throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
@@ -50,7 +51,10 @@ const SURGE_CURVE = 2; // >1 rewards venting hot: tiny frequent vents are weak
 /** Surge strength for venting at a given Heat: ×1 at 0, up to surgeMax() at 100. */
 export const surgeMultFor = (heat: number) => 1 + (surgeMax() - 1) * (heat / HEAT_MAX) ** SURGE_CURVE;
 export const surgeDuration = () =>
-  SURGE_DURATION * (shardUpgrades.has("exchanger") ? 1.5 : 1) * (hasNode("chain-reaction") ? 2 : 1);
+  SURGE_DURATION *
+  (shardUpgrades.has("exchanger") ? 1.5 : 1) *
+  (hasNode("chain-reaction") ? 2 : 1) *
+  (hasTrialReward("cold") ? 1.5 : 1);
 export const isSurging = () => state.heat.surgeTime > 0;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 
@@ -77,7 +81,7 @@ export function displayedHeat(): number {
 }
 
 /** No venting mid-Surge, so Surges can't be chained into a permanent boost. */
-export const canVent = () => isHeatUnlocked() && !isSurging() && state.heat.amount >= MIN_VENT;
+export const canVent = () => isHeatUnlocked() && !inTrial("cold") && !isSurging() && state.heat.amount >= MIN_VENT;
 
 /** Dump all Heat into a fresh Surge. */
 export function vent(): boolean {

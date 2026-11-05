@@ -1,3 +1,4 @@
+import { hasTrialReward } from "../game/trials";
 import { format, formatInt, formatMult, formatTime } from "../core/format";
 import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
@@ -40,11 +41,13 @@ import {
   latticesAvailable,
   latticeTempoBonus,
   nextLatticeRequirement,
+  latticeResetsNothing,
 } from "../game/lattice";
 import {
   canOverdrive,
   doOverdrive,
   nextOverdriveRequirement,
+  overdriveResetsNothing,
   overdriveMult,
   overdriveRequirement,
   overdrivesAvailable,
@@ -326,7 +329,7 @@ export function enginesTab(): View {
     () =>
       `${state.overdrives} Overdrives: all Engines ${formatMult(overdriveMult())}. ` +
       (state.overdrives < 4 ? "Next unlocks a new Engine. " : "") +
-      "Resets Flux, Engines and Tempo.",
+      (overdriveResetsNothing() ? "Free: resets nothing (Overload)." : "Resets Flux, Engines and Tempo."),
     canOverdrive,
     () => doOverdrive(),
     () => {
@@ -345,7 +348,11 @@ export function enginesTab(): View {
     "Lattice",
     () =>
       `${state.lattices} Lattices: Tempo +${latticeTempoBonus().toFixed(2)} per level. ` +
-      (shardUpgrades.has("latticeworks")
+      (latticeResetsNothing()
+        ? "Free: resets nothing (Hollow Core)."
+        : hasTrialReward("rigid")
+          ? "Keeps all your Overdrives."
+          : shardUpgrades.has("latticeworks")
         ? "Keeps up to 4 Overdrives."
         : shardUpgrades.has("ignition")
           ? "Resets Overdrives to 1."

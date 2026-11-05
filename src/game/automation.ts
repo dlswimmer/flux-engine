@@ -1,9 +1,10 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { canCollapse, doCollapse, isBreached, shardGain, shardUpgrades } from "./collapse";
+import { canCollapse, doCollapse, exactShardGain, isBreached, shardGain, shardUpgrades } from "./collapse";
 import { hasNode } from "./rift";
 import { buyMaxEngine } from "./engines";
-import { canLattice, doLattice } from "./lattice";
-import { UNLOCK_PHASE, canOverdrive, doOverdrive } from "./overdrive";
+import { canLattice, doLattice, latticeResetsNothing } from "./lattice";
+import { UNLOCK_PHASE, canOverdrive, doOverdrive, overdriveResetsNothing } from "./overdrive";
+import { SPRINT_HEAD_START, hasTrialReward } from "./trials";
 import { buyMaxTempo } from "./tempo";
 
 export const hasEngineAutobuyers = () => shardUpgrades.has("automators");
@@ -23,7 +24,9 @@ export const MIN_INTERVAL = 0.05;
 export function autobuyInterval(): number {
   // Collapses this Rift, so a Rift restarts the ramp. With lifetime Collapses, kept automation
   // alone made the first Collapse after a Rift ~55% of the very first one, before any Rift node.
-  let interval = BASE_INTERVAL * SPEEDUP_PER_COLLAPSE ** state.collapse.count;
+  // Sprint (Trial reward) starts the ramp as if you had more Collapses.
+  const collapses = state.collapse.count + (hasTrialReward("sprint") ? SPRINT_HEAD_START : 0);
+  let interval = BASE_INTERVAL * SPEEDUP_PER_COLLAPSE ** collapses;
   if (shardUpgrades.has("overclock")) interval /= 3;
   if (hasNode("self-winding")) interval /= 2;
   return Math.max(MIN_INTERVAL, interval);
@@ -60,7 +63,8 @@ function autoCollapseReady(): boolean {
     rateRun = run;
     bestRate = 0;
   }
-  const rate = shardGain().toNumber() / Math.max(state.collapse.time, 0.05);
+  // Unrounded gain: see exactShardGain. Peak-based like shardGain, so a Surge ending can't fake a drop.
+  const rate = exactShardGain().max(state.collapse.peakShards).toNumber() / Math.max(state.collapse.time, 0.05);
   if (rate >= bestRate) {
     bestRate = rate;
     return false;
@@ -99,13 +103,27 @@ export function runAutomation(dt: number) {
       if (auto.engines[tier]) buyMaxEngine(tier);
     }
   }
-  if (hasResetAutobuyers() && !areResetsPaused()) {
-    // Each claims as many as the Engines cover, up to the Stop-at limit. A Lattice that is
-    // only waiting out its timer holds Overdrives back: one would reset the Engine VIII it needs.
-    const latticeWanted = auto.lattice && state.lattices < auto.latticeMax && canLattice();
-    if (latticeWanted) {
-      if (waited(auto.latticeWait)) doLattice(auto.latticeMax - state.lattices);
-    } else if (auto.overdrive && state.overdrives < auto.overdriveMax && canOverdrive() && overdriveWaitDone())
-      doOverdrive(auto.overdriveMax - state.overdrives);
-  }
+  if (hasResetAutobuyers()) runResetAutobuyers();
+}
+
+function runResetAutobuyers() {
+  const auto = state.automation;
+  // Claims that reset nothing (Trial rewards) are always worth it: no Stop-at, wait or pause.
+  if (auto.lattice && latticeResetsNothing() && canLattice()) doLattice();
+  if (auto.overdrive && overdriveResetsNothing() && canOverdrive()) doOverdrive();
+  if (areResetsPaused()) return;
+  // Each claims as many as the Engines cover, up to the Stop-at limit. A Lattice that is
+  // only waiting out its timer holds Overdrives back: one would reset the Engine VIII it needs.
+  const latticeWanted =
+    auto.lattice && !latticeResetsNothing() && state.lattices < auto.latticeMax && canLattice();
+  if (latticeWanted) {
+    if (waited(auto.latticeWait)) doLattice(auto.latticeMax - state.lattices);
+  } else if (
+    auto.overdrive &&
+    !overdriveResetsNothing() &&
+    state.overdrives < auto.overdriveMax &&
+    canOverdrive() &&
+    overdriveWaitDone()
+  )
+    doOverdrive(auto.overdriveMax - state.overdrives);
 }

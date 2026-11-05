@@ -202,6 +202,32 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
 .upgrade-effect { font: 11px var(--mono); }
 .upgrade-cost { font: 12px var(--mono); color: var(--shard); }
 
+/* Trials */
+.trial-intro { color: var(--text-dim); font-size: 13px; margin: 0 0 12px; }
+.trial-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-color: var(--shard); }
+.trial-banner-text { margin: 0; }
+.trial-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.trial-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.trial-card.won { border-color: var(--shard-dim); }
+.trial-card.active { border-color: var(--shard); box-shadow: 0 0 12px var(--shard-dim); }
+.trial-card.locked { opacity: 0.55; }
+.trial-name { font-weight: 600; }
+.trial-card.won .trial-name::after { content: " ✓"; color: var(--shard); }
+.trial-rule { font-size: 13px; }
+.trial-reward { font-size: 13px; color: var(--shard); }
+.trial-status { font: 12px var(--mono); color: var(--text-dim); }
+.trial-status:empty { display: none; }
+.trial-card button { margin-top: auto; }
+.header.in-trial .progress-label { color: var(--shard); }
+
 /* Automated rows: settings are on the Automation tab, the row just says "auto" */
 .auto-badge {
   display: inline-block;
