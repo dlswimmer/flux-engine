@@ -100,12 +100,16 @@ export const TRIALS_UNLOCK = 15;
 
 export const isTrialsUnlocked = () => totalCollapses() >= TRIALS_UNLOCK || state.trials.completed.length > 0;
 export const activeTrial = () => state.trials.active as TrialId | null;
+/** The Collapse Trial you started (not one a Rift Trial stacks: see ruleActive). */
 export const inTrial = (id: TrialId) => state.trials.active === id;
+/** Is this Trial's rule in force: its own Collapse Trial, or a Rift Trial that stacks it. */
+export const ruleActive = (id: TrialId) =>
+  state.trials.active === id || (activeRiftTrial() !== null && riftTrialDef(activeRiftTrial()!).rules.includes(id));
 export const hasTrialReward = (id: TrialId) => state.trials.completed.includes(id);
 export const trialDef = (id: TrialId) => TRIALS.find((t) => t.id === id)!;
 
 export const isTrialAvailable = (id: TrialId) =>
-  isTrialsUnlocked() && (trialDef(id).requires ?? []).every(hasTrialReward);
+  isTrialsUnlocked() && (trialDef(id).requires ?? []).every(hasTrialReward) && activeRiftTrial() === null;
 
 /**
  * Start a Trial. If this run can already Collapse, that Collapse happens first (you keep its
@@ -140,8 +144,87 @@ export function completeActiveTrial() {
 
 /** Every tick: Sprint restarts the run once its time is up. */
 export function updateTrials() {
-  if (inTrial("sprint") && !canCollapse() && state.collapse.time >= SPRINT_LIMIT) {
+  if (ruleActive("sprint") && !canCollapse() && state.collapse.time >= SPRINT_LIMIT) {
     resetForCollapse();
     state.trials.sprintRestarts++;
   }
 }
+
+// ---------- Rift Trials ----------
+// A whole Rift from scratch (only the automation milestone holds) under several Collapse Trial
+// rules at once, in every Collapse of it. Unlike a Collapse Trial, Shard upgrades and Overcharge
+// work (the Rift needs Overcharge). Rift to win; wins are permanent. Start/win/give up live in
+// rift.ts. Tuned with `npm run report -- rifttrials`: ~8 min, ~30 min, ~1h15m, ~2h after Rift 4.
+
+export type RiftTrialId = "faultline" | "whiteout" | "deadcalm" | "singularity";
+
+export interface RiftTrialDef {
+  id: RiftTrialId;
+  name: string;
+  /** Collapse Trial rules in force all Rift. Each must be won as a Collapse Trial first. */
+  rules: TrialId[];
+  reward: string;
+  /** Other Rift Trials that must be won first. */
+  requires?: RiftTrialId[];
+}
+
+/** Rifts needed before Rift Trials open (Sprint and Hollow Core are out of reach before Rift 2). */
+export const RIFT_TRIALS_UNLOCK = 3;
+/** Fault Line: Overcharge cost growth per level (×1.35 normally). */
+export const FAULTLINE_OVERCHARGE_GROWTH = 1.3;
+/** Whiteout: Shard gain multiplier. */
+export const WHITEOUT_SHARDS = 2;
+/** Dead Calm: Overcharge needed to Rift (24 normally). */
+export const DEADCALM_RIFT_OVERCHARGE = 22;
+/** Singularity: Overcharge levels every Rift starts with. */
+export const SINGULARITY_OVERCHARGE = 6;
+
+export const RIFT_TRIALS: RiftTrialDef[] = [
+  {
+    id: "faultline",
+    name: "Fault Line",
+    rules: ["rigid", "overload", "sprint"],
+    reward: `Overcharge costs ×${FAULTLINE_OVERCHARGE_GROWTH} per level instead of ×1.35.`,
+  },
+  {
+    id: "whiteout",
+    name: "Whiteout",
+    rules: ["cold", "fixed", "rigid"],
+    reward: `Gain ${WHITEOUT_SHARDS}× Shards.`,
+  },
+  {
+    id: "deadcalm",
+    name: "Dead Calm",
+    rules: ["fixed", "hollow"],
+    reward: `Rifts need Overcharge ${DEADCALM_RIFT_OVERCHARGE} instead of 24 (Essence counts up from there).`,
+  },
+  {
+    id: "singularity",
+    name: "Singularity",
+    rules: ["rigid", "overload", "cold", "hollow"],
+    reward: `Start every Rift with Overcharge ${SINGULARITY_OVERCHARGE}.`,
+    requires: ["faultline", "whiteout", "deadcalm"],
+  },
+];
+
+export const riftTrialDef = (id: RiftTrialId) => RIFT_TRIALS.find((t) => t.id === id)!;
+export const activeRiftTrial = () => state.riftTrials.active as RiftTrialId | null;
+export const hasRiftTrialReward = (id: RiftTrialId) => state.riftTrials.completed.includes(id);
+export const isRiftTrialsUnlocked = () =>
+  state.rift.count >= RIFT_TRIALS_UNLOCK || state.riftTrials.completed.length > 0;
+/** Rules that must still be won as Collapse Trials, and Rift Trials still to win, before this one opens. */
+export const riftTrialMissing = (id: RiftTrialId): string[] => {
+  const def = riftTrialDef(id);
+  return [
+    ...def.rules.filter((r) => !hasTrialReward(r)).map((r) => trialDef(r).name),
+    ...(def.requires ?? []).filter((r) => !hasRiftTrialReward(r)).map((r) => riftTrialDef(r).name),
+  ];
+};
+export const isRiftTrialAvailable = (id: RiftTrialId) => isRiftTrialsUnlocked() && riftTrialMissing(id).length === 0;
+/** Every rule in force right now, for display. */
+export const activeRules = (): TrialId[] => {
+  const rift = activeRiftTrial();
+  if (rift) return riftTrialDef(rift).rules;
+  const collapse = activeTrial();
+  return collapse ? [collapse] : [];
+};

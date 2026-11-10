@@ -4,7 +4,7 @@ import { ENGINE_COUNT, state } from "../core/state";
 import { HORIZON, canCollapse, isBreached, shardGain } from "../game/collapse";
 import { engineRate, fluxPerSecond, isEngineUnlocked } from "../game/engines";
 import { displayedHeat, isHeatUnlocked, isSurging } from "../game/heat";
-import { RIFT_OVERCHARGE, canRift, essenceGain, isRiftUnlocked } from "../game/rift";
+import { riftOvercharge, canRift, essenceGain, isRiftUnlocked } from "../game/rift";
 import { h, setClass, setText, setVisible, type View } from "./dom";
 
 // The Engine Room: an ambient view of the machine, driven by the live game state.
@@ -56,7 +56,7 @@ interface Effect {
 }
 
 const MAX_PARTICLES = 450;
-const DURATION: Record<GameEvent, number> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4, trial: 2 };
+const DURATION: Record<GameEvent, number> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4, trial: 2, riftTrial: 2.4 };
 
 export function engineRoomTab(isActive: () => boolean): View & { leave(): void } {
   const canvas = h("canvas", { class: "room-canvas" });
@@ -255,7 +255,7 @@ export function engineRoomTab(isActive: () => boolean): View & { leave(): void }
     const rifting = effects.find((e) => e.kind === "rift");
 
     // Background: dark, warming with Heat; violet as the Rift nears.
-    const riftNear = isRiftUnlocked() ? clamp01(state.collapse.overcharge / RIFT_OVERCHARGE) : 0;
+    const riftNear = isRiftUnlocked() ? clamp01(state.collapse.overcharge / riftOvercharge()) : 0;
     const bgEdge = mix([10, 12, 17], [24, 14, 30], riftNear * 0.6);
     const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(width, height) * 0.75);
     bg.addColorStop(0, rgba(mix(bgEdge, tint, 0.12), 1));
@@ -371,8 +371,8 @@ export function engineRoomTab(isActive: () => boolean): View & { leave(): void }
             ctx.stroke();
           }
         }
-      } else if (e.kind === "trial") {
-        // A Trial won: three gold rings ripple out from the core.
+      } else if (e.kind === "trial" || e.kind === "riftTrial") {
+        // A Trial or Rift Trial won: three gold rings ripple out from the core.
         for (let i = 0; i < 3; i++) {
           const ki = k * 1.4 - i * 0.2;
           if (ki <= 0 || ki >= 1) continue;

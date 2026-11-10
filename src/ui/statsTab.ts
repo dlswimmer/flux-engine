@@ -6,7 +6,7 @@ import { fluxPerSecond } from "../game/engines";
 import { isHeatUnlocked, isSurging } from "../game/heat";
 import { canRift, chosenBranch, essenceGain, isRiftUnlocked, riftNodes } from "../game/rift";
 import { tempoMult } from "../game/tempo";
-import { TRIALS, isTrialsUnlocked } from "../game/trials";
+import { RIFT_TRIALS, TRIALS, isRiftTrialsUnlocked, isTrialsUnlocked } from "../game/trials";
 import { D } from "../lib/decimal";
 import { h, setText, setVisible, type View } from "./dom";
 
@@ -108,6 +108,7 @@ export function statsTab(): View {
       ["Shard upgrades", () => owned(shardUpgrades)],
       ["Overcharge", () => `level ${state.collapse.overcharge} · ${format(overchargeMult())}×`],
       ["Trials won", () => (isTrialsUnlocked() ? `${state.trials.completed.length} of ${TRIALS.length}` : "not unlocked")],
+      ["Rift Trials won", () => (isRiftTrialsUnlocked() ? `${state.riftTrials.completed.length} of ${RIFT_TRIALS.length}` : "not unlocked")],
       ["Autobuyers act every", () => (hasEngineAutobuyers() ? `${autobuyInterval().toFixed(2)}s` : "not unlocked")],
     ],
     hasCollapsed,

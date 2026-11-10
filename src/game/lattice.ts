@@ -2,7 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForLattice } from "./reset";
-import { FREE_LATTICES, RIGID_MAX_LATTICES, hasTrialReward, inTrial } from "./trials";
+import { FREE_LATTICES, RIGID_MAX_LATTICES, hasTrialReward, ruleActive } from "./trials";
 
 const BASE_REQUIREMENT = 40;
 const REQUIREMENT_STEP = 20;
@@ -26,7 +26,7 @@ export const latticeRequirement = () => requirementAt(state.lattices);
 
 /** How many Lattices your Engine VIII covers right now (at most `limit`): one reset claims them all. */
 export function latticesAvailable(limit = Infinity): number {
-  if (inTrial("rigid")) limit = Math.min(limit, RIGID_MAX_LATTICES - state.lattices);
+  if (ruleActive("rigid")) limit = Math.min(limit, RIGID_MAX_LATTICES - state.lattices);
   const have = state.engines[ENGINE_COUNT - 1].amount;
   let count = 0;
   // The requirement grows quadratically, so this is at most a few hundred steps.

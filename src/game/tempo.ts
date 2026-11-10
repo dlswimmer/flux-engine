@@ -2,7 +2,7 @@ import { D, Decimal } from "../lib/decimal";
 import { state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { latticeTempoBonus } from "./lattice";
-import { FIXED_TEMPO_CAP, HOLLOW_TEMPO_CAP, hasTrialReward, inTrial } from "./trials";
+import { FIXED_TEMPO_CAP, HOLLOW_TEMPO_CAP, hasTrialReward, ruleActive } from "./trials";
 
 const BASE_COST = 1e3;
 const COST_GROWTH = 8;
@@ -40,8 +40,9 @@ export const tempoCost = () =>
     ? D(BASE_COST).mul(D(costGrowth()).pow(state.tempo))
     : SCALED_BASE.mul(D(SCALED_COST_GROWTH).pow(state.tempo - SCALING_START));
 
-/** Fixed Tempo and Hollow Core (Trials) cap the level. */
-const tempoCap = () => (inTrial("fixed") ? FIXED_TEMPO_CAP : inTrial("hollow") ? HOLLOW_TEMPO_CAP : Infinity);
+/** Fixed Tempo and Hollow Core (Trials) cap the level; stacked in a Rift Trial, the lower cap wins. */
+const tempoCap = () =>
+  Math.min(ruleActive("fixed") ? FIXED_TEMPO_CAP : Infinity, ruleActive("hollow") ? HOLLOW_TEMPO_CAP : Infinity);
 
 export const canBuyTempo = () => isTempoUnlocked() && state.tempo < tempoCap() && state.flux.gte(tempoCost());
 

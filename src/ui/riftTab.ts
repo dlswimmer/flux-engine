@@ -3,7 +3,7 @@ import { state } from "../core/state";
 import {
   NODE_INFO,
   RIFT_MILESTONES,
-  RIFT_OVERCHARGE,
+  riftOvercharge,
   canRift,
   chosenBranch,
   doRift,
@@ -103,16 +103,16 @@ export function riftTab(): View {
       );
 
       const oc = state.collapse.overcharge;
-      fill.style.width = `${Math.min(100, (oc / RIFT_OVERCHARGE) * 100)}%`;
+      fill.style.width = `${Math.min(100, (oc / riftOvercharge()) * 100)}%`;
       setText(
         progressLabel,
-        canRift() ? `Open · every 2 more Overcharge: 2× Essence` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
+        canRift() ? `Open · every 2 more Overcharge: 2× Essence` : `Overcharge ${oc} of ${riftOvercharge()}`,
       );
       setText(
         button,
         canRift()
           ? `Rift for ${formatCount(essenceGain(), "Essence", "Essence")}${keyHint("R")}`
-          : `Reach Overcharge ${RIFT_OVERCHARGE} to Rift`,
+          : `Reach Overcharge ${riftOvercharge()} to Rift`,
       );
       setDisabled(button, !canRift());
 

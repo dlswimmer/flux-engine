@@ -18,7 +18,7 @@ import { optionsTab } from "./optionsTab";
 import { statsTab } from "./statsTab";
 import { notify } from "./toast";
 import { trialsTab } from "./trialsTab";
-import { TRIALS, isTrialsUnlocked } from "../game/trials";
+import { RIFT_TRIALS, TRIALS, isRiftTrialsUnlocked, isTrialsUnlocked } from "../game/trials";
 import { on } from "../core/events";
 
 interface Tab {
@@ -88,7 +88,16 @@ export function mountUI(root: HTMLElement) {
     if (won && def) notify(`Trial won: ${def.name}. ${def.reward}`, 8000);
   });
 
+  on("riftTrial", () => {
+    const def = RIFT_TRIALS.find((d) => d.id === state.riftTrials.completed[state.riftTrials.completed.length - 1]);
+    if (def) notify(`Rift Trial won: ${def.name}. ${def.reward}`, 8000);
+  });
+
   const render = () => {
+    if (isRiftTrialsUnlocked() && !state.riftTrials.introduced) {
+      state.riftTrials.introduced = true;
+      notify("Rift Trials unlocked: a whole Rift under several Trial rules at once. See the Trials tab.", 8000);
+    }
     if (isTrialsUnlocked() && !state.trials.introduced) {
       state.trials.introduced = true;
       notify("Trials unlocked: replay a Collapse under a rule for a permanent reward. See the Trials tab.", 8000);

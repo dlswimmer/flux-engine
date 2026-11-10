@@ -17,6 +17,8 @@ npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrade
 npm run sim -- run 30 idle   # same, never venting Heat
 npm run report                  # whole-game playthroughs per player style (milestone times) + every upgrade's worth
 npm run report -- devsaves      # regenerate the dev "Jump to milestone" saves (src/dev/milestoneSaves.ts) after balance changes
+npm run report -- rifttrials   # each Rift Trial as one whole Rift from saves after Rifts 2-5, then each reward's worth
+                               # (rules=rigid+overload,cold+fixed probes any rule stack; REWARDS=faultline,... wins those first)
 npm run sim -- rift 15 order target=3 lattices=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
                                        # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
 npm run build
@@ -89,7 +91,7 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
   - Whole game with raw-Collapse Trials (`GIVEUP=20 npm run report -- trials game`: the bot starts each Trial as it opens, gives up after 20 min and retries after the next Rift): Rigid Frame 1h15m, Overload 1h24m, Cold Running 1h43m, Fixed Tempo 3h24m (failed before Rift 1), Sprint 3h27m, Hollow Core not by Rift 5 (its ~40 min runs outlast a 20 min give-up). Breach 1h15m → 2h48m, Rift 1 1h48m → 3h14m, Rift 5 3h32m → 5h43m, much of it failed attempts a player would skip.
   - v1 (Trials with every upgrade on), baseline vs + Trials: Rift 1 1h47m / 1h50m; 1st Collapse after Rift 1 **7m05s / 2m37s**; Rift 5 3h32m / 2h20m. Not Sprint (without its reward: 3m00s): it is free Overdrives/Lattices removing the staircase, which hits hardest right after a Rift. Breaks the "half the very first Collapse" target, on purpose (decided 2026-11-05): the Trials themselves are the cost, so earning them buys the faster Rifts. The half-time target applies to a player without the Trials.
   - Fixed along the way: auto-Collapse tracked Shards/sec with the whole-number gain, whose plateaus (3, 3, 3...) read as the rate falling and Collapsed at 0.65s for 3 Shards; it uses the unrounded gain now.
-- **Next:** Rift Trials stacking Collapse Trial rules, and a Shard-powered second generator family.
+- **Next:** a Shard-powered second generator family. (Rift Trials, which stack these rules, are under the Rift layer.)
 
 ### The twist: Heat + branching prestige
 **Heat (built, unlocks at Collapse 3).**
@@ -129,7 +131,21 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
   Buying Automators first (instead of cheapest-first) helps casual players ~10 min but costs active ones ~20 (early autobuyers are slower than a clicking player). Soft spot: casual players are 2× slower before Automators.
 - **Pacing** (sim, earlier tuning run): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
 - **Watch (playtest, 2026-11-04):** an active player could finish their second Rift in ~17 min (the 1s sim bot takes ~1h). It may feel fast only because there is nothing after the Rift tree yet. Revisit when the next layer or an Essence sink lands: if Rifts still feel rushed, raise the Overcharge requirement or slow Overcharge cost growth (×1.35 now).
-- **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
+- **Rift Trials** (built: `game/trials.ts` defs, start/win in `game/rift.ts`, tuned with `npm run report -- rifttrials`): open at 3 Rifts, on the Trials tab under the Collapse Trials. A whole Rift **from scratch** under several Collapse Trial rules at once, in every Collapse of it. Start one (Rifts first if you can, else restarts this Rift with no Essence and no Rift counted), Rift to win. Each needs its rules won as Collapse Trials first. Giving up just lifts the rules (nothing to undo). No Collapse Trials during one.
+  - **From scratch:** only the first Rift milestone (automation) holds; every other Shard upgrade starts unbought. Shard upgrades and Overcharge work normally (the Rift needs Overcharge). With the milestones kept, the rules barely mattered: a whole Rift after Rift 3 is ~2 min, and Rigid + Overload took 3m30s, Cold + Sprint 1m46s (= a normal Rift). A from-scratch Rift is ~6 min.
+  - **Cold Running's rule now overrides the tree's Heat nodes** (Even Keel's cap, Backdraft's swap and bonus), in the Collapse Trial too. Otherwise the Order branch skipped the rule entirely (Cold = a normal Rift from Rift 4 on) and Backdraft turned it into a bonus.
+  - Escalating, in this order (1s bot, from just after Rift 3 / 4 / 5, each with the earlier Rift Trials won; a normal Rift is 2m39s / 1m46s / 1m42s):
+
+  | Rift Trial | Rules | Reward | Time |
+  | --- | --- | --- | --- |
+  | Fault Line | Rigid Frame + Overload + Sprint | Overcharge ×1.3 per level instead of ×1.35 | ~8.5 min |
+  | Whiteout | Cold Running + Fixed Tempo + Rigid Frame | Shards ×2 | 41 / 29 / 28 min |
+  | Dead Calm | Fixed Tempo + Hollow Core | Rifts need Overcharge 22 instead of 24 (Essence counts up from 22) | 50 min / 1h18m / 1h14m |
+  | Singularity (needs the other three) | Rigid Frame + Overload + Cold Running + Hollow Core | Start every Rift with Overcharge 6 | 2h35m / 2h06m / 1h59m |
+
+  - *Rule stacks that are walls* (> 2-3h, from Rift 3-5 saves): Sprint with Cold or Hollow (slow early runs restart forever), Rigid + Overload + Fixed (each alone ~7 min), and so all six at once. Hollow Core alone is ~55 min: every stack with it is long.
+  - Rewards, one normal Rift each alone (from Rift 3 / 5): none 2m39s / 1m42s, Fault Line 2m02s / 1m12s, Whiteout 1m37s / 1m09s, Dead Calm 2m16s / 1m23s, Singularity 1m43s / 1m23s, **all four 36s / 34s**. Same trade as the Collapse Trials (earning them buys faster Rifts), but see the Watch note above: Rifts were already quick, and Essence has no sink once the tree is done (~3h, about when Rift Trials open).
+- **Next**: an Essence sink beyond the tree; the next layer (Ascension).
 
 ### 3 · Ascension and beyond (planned)
 - Each new layer follows the same shape: a currency, an upgrade set, its own Trials, a QoL milestone track, and one new *mechanic*, not just bigger numbers.

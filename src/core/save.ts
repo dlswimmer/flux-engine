@@ -41,6 +41,9 @@ export function deserialize(json: string): GameState {
 /** Overlay a loaded save onto fresh defaults so new fields always exist. */
 function mergeWithDefaults<T>(base: T, incoming: unknown): T {
   if (incoming === undefined || incoming === null) return base;
+  // A null default (an active Trial) takes whatever was saved: typeof null is "object", so it
+  // used to fall into the object branch and drop the string, ending your Trial on reload.
+  if (base === null) return incoming as T;
   if (base instanceof Decimal) {
     const d = incoming instanceof Decimal ? incoming : new Decimal(incoming as DecimalSource);
     return (Number.isNaN(d.mag) ? base : d) as T;

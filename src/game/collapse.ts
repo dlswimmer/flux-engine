@@ -4,7 +4,14 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
-import { TRIAL_KEEPS, activeTrial, completeActiveTrial } from "./trials";
+import {
+  FAULTLINE_OVERCHARGE_GROWTH,
+  TRIAL_KEEPS,
+  WHITEOUT_SHARDS,
+  activeTrial,
+  completeActiveTrial,
+  hasRiftTrialReward,
+} from "./trials";
 import { riftShardMult } from "./rift";
 import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
@@ -192,6 +199,7 @@ export function exactShardGain(): Decimal {
     : D(1);
   if (shardUpgrades.has("prism")) gain = gain.mul(2);
   gain = gain.mul(riftShardMult());
+  if (hasRiftTrialReward("whiteout")) gain = gain.mul(WHITEOUT_SHARDS);
   // After Breach, Heat pays in Shards too: Engine multipliers barely move Shards (a ×2 is ~×1.06).
   if (isBreached()) gain = gain.mul(heatShardMult());
   return gain;
@@ -246,7 +254,9 @@ export const overchargeMult = () =>
   activeTrial() !== null
     ? D(1)
     : state.collapse.overcharge <= 1000 ? D(OVERCHARGE_MULT ** state.collapse.overcharge) : D(OVERCHARGE_MULT).pow(state.collapse.overcharge);
-export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(OVERCHARGE_COST_GROWTH).pow(state.collapse.overcharge));
+/** Fault Line (Rift Trial reward) slows the cost growth. */
+const overchargeGrowth = () => (hasRiftTrialReward("faultline") ? FAULTLINE_OVERCHARGE_GROWTH : OVERCHARGE_COST_GROWTH);
+export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(overchargeGrowth()).pow(state.collapse.overcharge));
 export const canBuyOvercharge = () => isOverchargeUnlocked() && state.collapse.shards.gte(overchargeCost());
 
 export function buyOvercharge(): boolean {
@@ -261,13 +271,13 @@ export function buyMaxOvercharge(): number {
   const count = Decimal.affordGeometricSeries(
     state.collapse.shards,
     OVERCHARGE_BASE_COST,
-    OVERCHARGE_COST_GROWTH,
+    overchargeGrowth(),
     state.collapse.overcharge,
   )
     .floor()
     .toNumber();
   if (!(count > 0) || !Number.isFinite(count)) return 0;
-  const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, OVERCHARGE_COST_GROWTH, state.collapse.overcharge);
+  const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, overchargeGrowth(), state.collapse.overcharge);
   state.collapse.shards = state.collapse.shards.sub(cost).max(0);
   state.collapse.overcharge += count;
   return count;

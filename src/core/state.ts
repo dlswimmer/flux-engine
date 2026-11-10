@@ -128,6 +128,14 @@ export interface GameState {
     sprintRestarts: number;
     introduced: boolean;
   };
+  /** Rift Trials (game/trials.ts): a whole Rift under stacked Trial rules. Wins are permanent. */
+  riftTrials: {
+    active: string | null;
+    completed: string[];
+    /** Fastest win per Rift Trial (Rift time), in seconds. */
+    best: Record<string, number>;
+    introduced: boolean;
+  };
 
   stats: {
     timePlayed: number;
@@ -200,6 +208,7 @@ export function defaultState(): GameState {
     },
 
     trials: { active: null, completed: [], best: {}, sprintRestarts: 0, introduced: false },
+    riftTrials: { active: null, completed: [], best: {}, introduced: false },
 
     stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0, shardsEarned: D(0), overdrives: 0, lattices: 0 },
     options: { autosave: true, offlineProgress: true, devSpeed: 1 },

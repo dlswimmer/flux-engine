@@ -3,7 +3,7 @@ import { defaultEngines, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetHeat } from "./heat";
 import { hasNode, keptShardUpgrades } from "./rift";
-import { hasTrialReward } from "./trials";
+import { SINGULARITY_OVERCHARGE, hasRiftTrialReward, hasTrialReward } from "./trials";
 
 // Each reset wipes everything below its own layer, then keeps what upgrades say to keep.
 // New prestige layers add a resetForX that calls the one below it.
@@ -77,7 +77,7 @@ export function devResetRift() {
  */
 export function resetForRift() {
   state.collapse.shards = D(0);
-  state.collapse.overcharge = 0;
+  state.collapse.overcharge = hasRiftTrialReward("singularity") ? SINGULARITY_OVERCHARGE : 0;
   // Echo grows with Collapses this Rift; without this reset (×6 by the first Rift) plus the
   // kept upgrades, the first Collapse after a Rift took 8s against ~21m for the very first.
   state.stats.collapses = Math.max(state.stats.collapses, state.collapse.count);

@@ -227,6 +227,13 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
 .trial-status:empty { display: none; }
 .trial-card button { margin-top: auto; }
 .header.in-trial .progress-label { color: var(--shard); }
+.rift-trials { margin-top: 20px; }
+.rift-trials h2 { font-size: 16px; margin: 0 0 4px; }
+.trial-banner.rift, .rift-trial-card.active { border-color: var(--rift); }
+.rift-trial-card.active { box-shadow: 0 0 12px var(--rift-dim); }
+.rift-trial-card.won .trial-name::after { color: var(--rift); }
+.header.in-rift-trial .progress-label { color: var(--rift); }
+.trial-rules { margin: 0; padding-left: 18px; font-size: 13px; display: grid; gap: 4px; }
 
 /* Automated rows: settings are on the Automation tab, the row just says "auto" */
 .auto-badge {

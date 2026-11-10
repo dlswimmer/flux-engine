@@ -2,8 +2,9 @@ import { emit } from "../core/events";
 import { D, Decimal } from "../lib/decimal";
 import { RIFT_HISTORY, state } from "../core/state";
 import { isBreached } from "./collapse";
-import { displayedHeat } from "./heat";
+import { backdraftActive, displayedHeat } from "./heat";
 import { resetForRift } from "./reset";
+import { DEADCALM_RIFT_OVERCHARGE, activeRiftTrial, hasRiftTrialReward, isRiftTrialAvailable, type RiftTrialId } from "./trials";
 import { UpgradeSet } from "./upgrades";
 
 // Layer 2: the Rift. Overcharge the Engines far enough and the Rift tears open: it resets
@@ -17,15 +18,17 @@ import { UpgradeSet } from "./upgrades";
 
 /** Overcharge level needed to Rift. Tuned with `npm run sim -- rift`. */
 export const RIFT_OVERCHARGE = 24;
+/** Dead Calm (Rift Trial reward) lowers it; Essence counts up from whatever it is. */
+export const riftOvercharge = () => (hasRiftTrialReward("deadcalm") ? DEADCALM_RIFT_OVERCHARGE : RIFT_OVERCHARGE);
 /** Every this many Overcharge levels past the requirement doubles Essence. */
 const LEVELS_PER_DOUBLING = 2;
 
 export const isRiftUnlocked = () => isBreached() || state.rift.count > 0;
-export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
+export const canRift = () => state.collapse.overcharge >= riftOvercharge();
 
 export function essenceGain(): Decimal {
   if (!canRift()) return D(0);
-  const over = state.collapse.overcharge - RIFT_OVERCHARGE;
+  const over = state.collapse.overcharge - riftOvercharge();
   return D(2).pow(over / LEVELS_PER_DOUBLING).floor().max(1);
 }
 
@@ -41,6 +44,7 @@ export function doRift(): boolean {
     { number: rift.count, time: rift.time, essence: gain, collapses: state.collapse.count, overcharge: state.collapse.overcharge },
   ].slice(-RIFT_HISTORY);
   rift.bestTime = Math.min(rift.bestTime, rift.time);
+  completeActiveRiftTrial();
   if (rift.respec) {
     rift.essence = rift.essence.add(spentEssence());
     rift.nodes = [];
@@ -49,6 +53,39 @@ export function doRift(): boolean {
   resetForRift();
   emit("rift");
   return true;
+}
+
+// ---------- Rift Trials (defined in trials.ts) ----------
+
+/**
+ * Start a Rift Trial. If you can Rift, that Rift happens first (you keep its Essence);
+ * otherwise this Rift restarts from scratch, as a Rift would, but with no Essence and no
+ * Rift counted. Either way the Rift Trial starts from a fresh Rift.
+ */
+export function startRiftTrial(id: RiftTrialId): boolean {
+  if (!isRiftTrialAvailable(id) || activeRiftTrial()) return false;
+  if (canRift()) doRift();
+  else resetForRift();
+  state.riftTrials.active = id;
+  // A Rift from scratch: only the automation milestone holds.
+  state.collapse.upgrades = state.collapse.upgrades.filter((u) => RIFT_MILESTONES[0].keeps.includes(u));
+  return true;
+}
+
+/** Give up: the rules lift and this Rift carries on as a normal one (nothing to undo). */
+export function abandonRiftTrial() {
+  state.riftTrials.active = null;
+}
+
+/** Called by doRift before it resets: a Rift inside a Rift Trial wins it. */
+function completeActiveRiftTrial() {
+  const id = activeRiftTrial();
+  if (!id) return;
+  const rt = state.riftTrials;
+  if (!rt.completed.includes(id)) rt.completed = [...rt.completed, id];
+  rt.best = { ...rt.best, [id]: Math.min(rt.best[id] ?? Infinity, state.rift.time) };
+  rt.active = null;
+  emit("riftTrial");
 }
 
 // ---------- Milestones: what each Rift lets you keep ----------
@@ -208,7 +245,7 @@ export function riftEngineMult(): Decimal {
   let mult = riftNodes.effect("rift-lens");
   // Uses the draining bar during a Surge, so the Heat you vent keeps burning instead of the
   // bonus vanishing the moment you vent.
-  if (hasNode("backdraft")) mult = mult.mul(1 + (3 * displayedHeat()) / 100);
+  if (backdraftActive()) mult = mult.mul(1 + (3 * displayedHeat()) / 100);
   return mult;
 }
 

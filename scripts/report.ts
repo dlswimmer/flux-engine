@@ -7,6 +7,8 @@
 //   npm run report -- rift          Overcharge levels and Rift nodes: Shards/min after Breach
 //   npm run report -- trials        Trial run times at milestones, whole game with/without Trials
 //                                   ("table" or "game" for one half, "late" for saves before Rifts 2-5)
+//   npm run report -- rifttrials    each Rift Trial played as one whole Rift from saves after Rifts 2-5
+//                                   (all Collapse Trials won), then what each reward is worth
 import { formatTime } from "../src/core/format";
 import { deserialize, serialize } from "../src/core/save";
 import { defaultState, replaceState, state } from "../src/core/state";
@@ -22,10 +24,21 @@ import { maxAll } from "../src/game/engines";
 import { isHeatUnlocked, vent } from "../src/game/heat";
 import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
-import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
+import { canRift, doRift, essenceGain, riftNodes, startRiftTrial } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
-import { TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
+import {
+  RIFT_TRIALS,
+  TRIALS,
+  abandonTrial,
+  activeRiftTrial,
+  activeTrial,
+  hasTrialReward,
+  isTrialAvailable,
+  startTrial,
+  type RiftTrialId,
+  type TrialId,
+} from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
 
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
@@ -432,8 +445,121 @@ function trialGame() {
   }
 }
 
+// ---------- Rift Trials ----------
+
+const RIFT_GIVE_UP = Number(process.env.RIFTGIVEUP ?? 120) * 60;
+
+/**
+ * One whole Rift from `save` (just after a Rift), 1s bot, Rifting as soon as it can. With a Rift
+ * Trial, starts it first (restarting the Rift). Returns the Rift's time; Infinity = gave up.
+ */
+function oneRift(save: string, riftTrial: RiftTrialId | null, setup?: () => void, limit = RIFT_GIVE_UP): number {
+  replaceState(deserialize(save));
+  state.trials.completed = TRIALS.map((d) => d.id);
+  setup?.();
+  if (riftTrial && !startRiftTrial(riftTrial)) return NaN;
+  const start = state.rift.count;
+  let bestRate = 0;
+  let step = 0;
+  let t = 0;
+  while (t < limit) {
+    tick(DT);
+    t += DT;
+    if (isHeatUnlocked() && state.heat.amount >= BASE.ventAt!) vent();
+    if (++step % 10) continue;
+    if (canRift()) {
+      doRift();
+      if (riftTrial && activeRiftTrial()) return NaN; // should have won
+      return state.rift.count > start ? t : NaN;
+    }
+    buyUpgrades(BASE.upgradeOrder);
+    buyMaxOvercharge();
+    if (canCollapse() && !shardUpgrades.has("selfcollapse")) {
+      const rate = shardGain().toNumber() / state.collapse.time;
+      if (!isBreached() || rate < bestRate * 0.97) {
+        doCollapse();
+        bestRate = 0;
+        continue;
+      }
+      bestRate = Math.max(bestRate, rate);
+    }
+    const latMax = shardUpgrades.has("latticeworks") ? BASE.lattices[1] : BASE.lattices[0];
+    if (shardUpgrades.has("automators2")) {
+      const a = state.automation;
+      a.overdrive = a.lattice = true;
+      a.overdriveMax = 10;
+      a.latticeMax = latMax;
+      a.collapse = true;
+      a.collapseShards = 0;
+    } else if (state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
+    else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
+    maxAll();
+  }
+  return Infinity;
+}
+
+/** Rift-Trial probe: `rules=a+b,c+d` plays a whole Rift under each rule set (as a Rift Trial would). */
+function riftRuleProbe(saves: Record<string, string>, wanted: string[], sets: TrialId[][]) {
+  const cell = (x: number) => (Number.isFinite(x) ? formatTime(x) : Number.isNaN(x) ? "error" : `> ${RIFT_GIVE_UP / 60}m`).padStart(16);
+  console.log("".padEnd(10) + ["scratch", ...sets.map((r) => r.join("+"))].map((n) => n.padStart(16)).join(""));
+  const probe = RIFT_TRIALS[0];
+  const original = probe.rules;
+  for (const name of wanted) {
+    if (!saves[name]) continue;
+    // REWARDS=faultline,whiteout: probe with those Rift Trials already won.
+    const won = (process.env.REWARDS ?? "").split(",").filter(Boolean) as RiftTrialId[];
+    const row = [[], ...sets].map((rules) => {
+      probe.rules = rules;
+      return oneRift(saves[name], probe.id, () => (state.riftTrials.completed = won.filter((id) => id !== probe.id)));
+    });
+    console.log(name.padEnd(10) + row.map(cell).join(""));
+  }
+  probe.rules = original;
+}
+
+function riftTrialsReport() {
+  const wanted = ["Rift 2", "Rift 3", "Rift 4", "Rift 5"];
+  const saves: Record<string, string> = {};
+  playthrough(BASE, 5, 8 * 3600, (name) => {
+    if (wanted.includes(name)) saves[name] = serialize(state);
+  });
+  const rules = process.argv.find((a) => a.startsWith("rules="))?.slice(6);
+  if (rules) return riftRuleProbe(saves, wanted, rules.split(",").map((r) => r.split("+") as TrialId[]));
+  const only = process.argv.find((a) => a.startsWith("only="))?.slice(5).split(",");
+  const list = RIFT_TRIALS.filter((d) => !only || only.includes(d.id));
+  const cell = (x: number) => (Number.isFinite(x) ? formatTime(x) : Number.isNaN(x) ? "error" : `> ${RIFT_GIVE_UP / 60}m`).padStart(13);
+  console.log(`Rift Trials: one whole Rift from just after each Rift, all Collapse Trials won, 1s bot (> ${RIFT_GIVE_UP / 60}m = gave up)\n`);
+  console.log("".padEnd(10) + ["Normal Rift", ...list.map((d) => d.name)].map((n) => n.padStart(13)).join(""));
+  for (const name of wanted) {
+    if (!saves[name]) continue;
+    // Played in order: the earlier Rift Trials' rewards are already won.
+    const earlier = (id: RiftTrialId) => () =>
+      (state.riftTrials.completed = RIFT_TRIALS.slice(0, RIFT_TRIALS.findIndex((d) => d.id === id)).map((d) => d.id));
+    const row = [oneRift(saves[name], null), ...list.map((d) => oneRift(saves[name], d.id, earlier(d.id)))];
+    console.log(name.padEnd(10) + row.map(cell).join(""));
+  }
+  if (process.argv.includes("table")) return;
+  console.log("\nRewards: one normal Rift with each reward alone (Rift time, Rifting as soon as it opens)\n");
+  console.log("".padEnd(10) + ["none", ...RIFT_TRIALS.map((d) => d.name), "all four"].map((n) => n.padStart(13)).join(""));
+  for (const name of wanted) {
+    if (!saves[name]) continue;
+    const withRewards = (ids: RiftTrialId[]) => () => {
+      state.riftTrials.completed = ids;
+      // Singularity's Overcharge comes at the Rift; the save is just after one.
+      if (ids.includes("singularity")) state.collapse.overcharge = Math.max(state.collapse.overcharge, 6);
+    };
+    const row = [
+      oneRift(saves[name], null),
+      ...RIFT_TRIALS.map((d) => oneRift(saves[name], null, withRewards([d.id]))),
+      oneRift(saves[name], null, withRewards(RIFT_TRIALS.map((d) => d.id))),
+    ];
+    console.log(name.padEnd(10) + row.map(cell).join(""));
+  }
+}
+
 const mode = process.argv[2] ?? "all";
 if (mode === "trials") trialsReport();
+if (mode === "rifttrials") riftTrialsReport();
 if (mode === "devsaves") devSaves();
 const VALUE_ORDER = process.argv.find((a) => a.startsWith("order="))?.slice(6).split(",") ?? [];
 const only = process.argv.includes("only-order");

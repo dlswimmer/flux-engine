@@ -2,7 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
-import { COLD_THROTTLE_FLOOR, hasTrialReward, inTrial } from "./trials";
+import { COLD_THROTTLE_FLOOR, hasTrialReward, ruleActive } from "./trials";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
 // throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
@@ -34,21 +34,27 @@ export function updateHeat(dt: number) {
   const heatingTime = Math.max(0, dt - heat.surgeTime);
   heat.surgeTime = Math.max(0, heat.surgeTime - dt);
   const rate =
-    (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) * (inTrial("cold") ? COLD_HEAT_SPEED : 1);
+    (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) * (ruleActive("cold") ? COLD_HEAT_SPEED : 1);
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
   heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
-  if (hasNode("even-keel")) heat.amount = Math.min(heat.amount, THROTTLE_START);
+  if (hasNode("even-keel") && !ruleActive("cold")) heat.amount = Math.min(heat.amount, THROTTLE_START);
   if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
 }
 
+/**
+ * Cold Running's rule overrides the tree's Heat nodes: Even Keel's cap and Backdraft's bonus are
+ * off under it, or the Order and Entropy branches would each skip the rule entirely.
+ */
+export const backdraftActive = () => hasNode("backdraft") && !ruleActive("cold");
+
 /** Cold Running throttles every Engine, not just Engine I. */
-export const throttlesAllEngines = () => inTrial("cold");
+export const throttlesAllEngines = () => ruleActive("cold");
 
 /** Multiplier on Flux output from overheating: 1 up to THROTTLE_START, down to THROTTLE_FLOOR at max. */
 export function fluxThrottle(): number {
   const h = state.heat.amount;
-  if (!isHeatUnlocked() || h <= THROTTLE_START || hasNode("backdraft")) return 1;
-  const floor = inTrial("cold") ? COLD_THROTTLE_FLOOR : THROTTLE_FLOOR;
+  if (!isHeatUnlocked() || h <= THROTTLE_START || backdraftActive()) return 1;
+  const floor = ruleActive("cold") ? COLD_THROTTLE_FLOOR : THROTTLE_FLOOR;
   return 1 - ((1 - floor) * (h - THROTTLE_START)) / (HEAT_MAX - THROTTLE_START);
 }
 
@@ -72,7 +78,7 @@ export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
  */
 export function heatShardMult(): number {
   let mult = Math.sqrt(surgeMult());
-  if (hasNode("backdraft")) mult *= Math.sqrt(1 + (3 * displayedHeat()) / 100);
+  if (backdraftActive()) mult *= Math.sqrt(1 + (3 * displayedHeat()) / 100);
   return mult;
 }
 
@@ -88,7 +94,7 @@ export function displayedHeat(): number {
 }
 
 /** No venting mid-Surge, so Surges can't be chained into a permanent boost. */
-export const canVent = () => isHeatUnlocked() && !inTrial("cold") && !isSurging() && state.heat.amount >= MIN_VENT;
+export const canVent = () => isHeatUnlocked() && !ruleActive("cold") && !isSurging() && state.heat.amount >= MIN_VENT;
 
 /** Dump all Heat into a fresh Surge. */
 export function vent(): boolean {

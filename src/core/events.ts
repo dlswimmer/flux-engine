@@ -2,7 +2,7 @@
 // Room's animations). Game logic only emits; nothing in it listens, so the headless sims are
 // unaffected. New layers add their event names here.
 
-export type GameEvent = "overdrive" | "lattice" | "vent" | "collapse" | "rift" | "trial";
+export type GameEvent = "overdrive" | "lattice" | "vent" | "collapse" | "rift" | "trial" | "riftTrial";
 
 const listeners = new Map<GameEvent, Set<() => void>>();
 
