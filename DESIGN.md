@@ -16,6 +16,7 @@ npm run playtest -- automation   # autobuyers vs holding M, Collapse 5–35
 npm run sim -- run 30   # 30 Collapses, best route per run, buying Shard upgrades
 npm run sim -- run 30 idle   # same, never venting Heat
 npm run report                  # whole-game playthroughs per player style (milestone times) + every upgrade's worth
+npm run report -- profiles      # whole game in real time for 12 player types (hardcore … casual check-ins … AFK), offline catch-up included
 npm run report -- devsaves      # regenerate the dev "Jump to milestone" saves (src/dev/milestoneSaves.ts) after balance changes
 npm run sim -- rift 15 order target=3 lattices=3   # play to Breach (cached in .sim-cache/), then 15 Rifts on the Order
                                        # branch, Rifting once a Rift gives 3 Essence (or: entropy, asap, push)
@@ -130,6 +131,26 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 
   Buying Automators first (instead of cheapest-first) helps casual players ~10 min but costs active ones ~20 (early autobuyers are slower than a clicking player). Soft spot: casual players are 2× slower before Automators.
 - **Pacing** (sim, earlier tuning run): Breach ~1h21m. Rifting at 1 / 2 / 4 / 8 Essence gives ~15 / 25 / 37 / 64 Essence per hour, first Rift 5 / 7 / 13 / 25 min after Breach; the 41-Essence tree takes ~1-1.5h. Lattice limit 1 vs 3 differs by ~10-20%. Order and Entropy finish 15 Rifts within ~1 minute of each other. (Rift Lens at ^2 made every Rift after the first take ~10s.)
+- **Player profiles** (`npm run report -- profiles`, 2026-11-10, main after the Hollow Core retune). Real time, offline time included; "played" = time with the game open and acted on. Session players play at the 1s cadence, then their time away runs through the game's own catch-up (closed = one catch-up of at most 1000 steps on return; tab left open = caught up once a minute).
+
+  | Player | Collapse 1 | Automators | Breach | Rift 1 | Rift 2 | Rift 5 | Played |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | Hardcore (acts every 0.2s) | 20m | 36m | 58m | 1h30m | 2h19m | 3h00m | all |
+  | Hardcore + Trials | 20m | 36m | 3h32m | 3h41m | 3h56m | 4h09m | all |
+  | Active 1s, Order (Entropy within 2 min) | 22m | 43m | 1h15m | 1h48m | 2h44m | 3h32m | all |
+  | Active 1s + Trials | 22m | 43m | 3h49m | 3h59m | 4h15m | 4h28m | all |
+  | Relaxed (every 10s, never vents) | 40m | 1h50m | 2h52m | 3h25m | 4h27m | 5h23m | all |
+  | Tab open, acts every 5 min | 8h | 26h | 38h | 39h | 41h | 42h | all |
+  | Casual: 5 min every 30 min, closes the app | 2h | 4h | 7h | 9h30m | 12h30m | 16h | 2h40m |
+  | Casual, same but tab left open | 2h | 4h | 7h | 7h30m | 9h | 11h | 1h50m |
+  | Commuter: 15 min every 4h | 4h | 8h | 16h | 24h | 36h | 44h | 2h57m |
+  | AFK: 2 min every 2h | 18h | 38h | 3d4h | 3d18h | 4d10h | 5d6h | 2h07m |
+  | AFK, buying automation first | 18h | 18h | 4d4h | 4d20h | 5d12h | 6d8h | 2h33m |
+
+  - Trials (45 min give-up) cost ~1h of the whole game but make Rifts fast: Rift 1 → Rift 5 is 30 min with them, 1h44m without. Won at (1s / 0.2s): Rigid Frame 1h16m / 1h00m, Overload 1h25m / 1h08m, Cold Running 1h44m / 1h27m, Fixed Tempo 2h26m / 2h09m, Hollow Core 3h46m / 3h28m, Sprint 4h02m / 3h43m (after Rift 1).
+  - **Watch: closing the app costs ~⅓ of progress after Breach.** Same casual player, Rift 5 at 16h with the app closed vs 11h with the tab left open. A catch-up is at most 1000 steps, so 25 min away = 1.5s steps, while a post-Breach run lasts ~2s. Before Breach the two are identical.
+  - Session players get the most per minute played (Rift 5 in 2-3h of play vs 3h32m for the 1s bot). Acting every 5 min with the tab open is the worst way to play before Automators (8h to the first Collapse): the opening needs frequent buying.
+  - Buying automation first doesn't help even an AFK player (Breach a day later): saving 11 Shards for Foreman + Self-Collapse delays the power upgrades.
 - **Watch (playtest, 2026-11-04):** an active player could finish their second Rift in ~17 min (the 1s sim bot takes ~1h; a bot acting every 0.2s took 49 min Rift 1 → Rift 2, 58 with Trials, on 2026-11-10, so the sims don't reproduce it). It may feel fast only because there is nothing after the Rift tree yet. Revisit when the next layer or an Essence sink lands: if Rifts still feel rushed, raise the Overcharge requirement or slow Overcharge cost growth (×1.35 now).
 - **Next**: Rift Trials stacking Collapse Trial rules; an Essence sink beyond the tree; the next layer (Ascension).
 
