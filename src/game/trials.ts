@@ -23,15 +23,19 @@ export interface TrialDef {
 /*
  * Tuned with `npm run report -- trials` as an escalating set (1s bot, each Trial with the earlier
  * ones won): Rigid ~10 min, Overload ~12, Cold ~17, Fixed ~15 before the first Rift; Sprint and
- * Hollow Core out of reach until after Rift 2 (then ~3-6 and ~40 min).
+ * Hollow Core out of reach until after Rift 2 (then ~3-6 and ~18 min).
  */
 
 /** Seconds Sprint allows to reach the Horizon before the run restarts. */
 export const SPRINT_LIMIT = 180;
 /** Fixed Tempo: the most Tempo levels you can buy (150: never by Rift 3; 185: ~7 min). */
 export const FIXED_TEMPO_CAP = 170;
-/** Hollow Core's Tempo cap (200: never by Rift 3). */
-export const HOLLOW_TEMPO_CAP = 300;
+/**
+ * Hollow Core: what each Overdrive multiplies by instead of ×2. At ×1 the Trial took ~40 min
+ * after Rift 2 and the 20-min-give-up bot never won it by Rift 5; ×1.15 is ~18 min after Rift 2
+ * and ~33 before it; ×1.2 was already won after Rift 1. (Its old Tempo cap of 300 never bound.)
+ */
+export const HOLLOW_OVERDRIVE_FACTOR = 1.15;
 /** Cold Running: overheating slows every Engine, down to this. */
 export const COLD_THROTTLE_FLOOR = 0.6;
 /** Overload: the most Overdrives allowed. Rigid Frame: the most Lattices. */
@@ -86,7 +90,7 @@ export const TRIALS: TrialDef[] = [
   {
     id: "hollow",
     name: "Hollow Core",
-    rule: `Overdrives give no multiplier (they still unlock Engines) and Tempo stops at level ${HOLLOW_TEMPO_CAP}.`,
+    rule: `Overdrives multiply by only ×${HOLLOW_OVERDRIVE_FACTOR} (they still unlock Engines).`,
     reward: `Your first ${FREE_LATTICES} Lattices each Collapse reset nothing.`,
     requires: ["overload", "rigid"],
   },
