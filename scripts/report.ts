@@ -24,6 +24,7 @@ import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
 import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
+import { simulate } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
 import { TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
@@ -47,6 +48,12 @@ export interface Player {
   branch: "order" | "entropy";
   /** Play the Collapse Trials in order as they open (giving up on one after TRIAL_GIVE_UP). */
   trials?: boolean;
+  /**
+   * Plays in sessions: `play` seconds at the `every` cadence, then away for `away` seconds. Away
+   * time runs through the game's own catch-up: "closed" = one offline catch-up on return (app or
+   * tab closed, max 1000 steps), "background" = a hidden tab, caught up once a minute.
+   */
+  session?: { play: number; away: number; mode: "closed" | "background" };
 }
 
 const NODE_PLAN = {
@@ -91,7 +98,20 @@ export function playthrough(
   const retryAt: Partial<Record<TrialId, number>> = {};
   const actEvery = Math.round(p.every / DT);
   let step = 0;
+  let awayTime = 0;
   while (t < limit && state.rift.count < rifts) {
+    if (p.session) {
+      const cycle = p.session.play + p.session.away;
+      const pos = t % cycle;
+      if (pos >= p.session.play - DT / 2) {
+        const away = Math.max(DT, cycle - pos);
+        if (p.session.mode === "closed") simulate(away);
+        else for (let left = away; left > 0; left -= 60) simulate(Math.min(60, left));
+        t += away;
+        awayTime += away;
+        step = -1; // act right on return
+      }
+    }
     tick(DT);
     t += DT;
     step++;
@@ -172,6 +192,7 @@ export function playthrough(
   }
   void since;
   ms["(end)"] = t;
+  ms["(played)"] = t - awayTime;
   return ms;
 }
 
@@ -459,3 +480,70 @@ if (mode === "milestones" || mode === "all")
   ]);
 if (mode === "shards" || mode === "all") shardReport();
 if (mode === "rift" || mode === "all") riftReport();
+
+// ---------- Player profiles ----------
+
+/**
+ * Whole-game pacing for different kinds of players, in real (wall-clock) time, plus how much of
+ * it they actually spent playing. `npm run report -- profiles` (or `profiles 3` for one row).
+ */
+const H = 3600;
+const PROFILES: (Player & { limit: number })[] = [
+  { ...BASE, name: "Hardcore (acts every 0.2s)", every: 0.2, branch: "entropy", limit: 8 * H },
+  { ...BASE, name: "Hardcore + Trials", every: 0.2, branch: "entropy", trials: true, limit: 8 * H },
+  { ...BASE, name: "Active, Order (1s)", limit: 8 * H },
+  { ...BASE, name: "Active, Entropy (1s)", branch: "entropy", limit: 8 * H },
+  { ...BASE, name: "Active + Trials (1s)", trials: true, limit: 10 * H },
+  { ...BASE, name: "Relaxed (every 10s, no venting)", every: 10, ventAt: null, limit: 12 * H },
+  { ...BASE, name: "Tab open, acts every 5 min", every: 300, ventAt: null, limit: 72 * H },
+  {
+    ...BASE,
+    name: "Casual: 5 min every 30 min",
+    session: { play: 5 * 60, away: 25 * 60, mode: "closed" },
+    limit: 7 * 24 * H,
+  },
+  {
+    ...BASE,
+    name: "Casual, tab left open",
+    session: { play: 5 * 60, away: 25 * 60, mode: "background" },
+    limit: 7 * 24 * H,
+  },
+  {
+    ...BASE,
+    name: "Commuter: 15 min every 4h",
+    session: { play: 15 * 60, away: 4 * H - 15 * 60, mode: "closed" },
+    limit: 14 * 24 * H,
+  },
+  {
+    ...BASE,
+    name: "AFK: 2 min every 2h",
+    ventAt: null,
+    session: { play: 2 * 60, away: 2 * H - 2 * 60, mode: "closed" },
+    limit: 21 * 24 * H,
+  },
+  {
+    ...BASE,
+    name: "AFK, automation first",
+    ventAt: null,
+    upgradeOrder: ["automators", "automators2", "selfcollapse"],
+    session: { play: 2 * 60, away: 2 * H - 2 * 60, mode: "closed" },
+    limit: 21 * 24 * H,
+  },
+];
+
+const PROFILE_MARKS = ["Collapse 1", "Automators", "Self-Collapse", "Breach", "Rift 1", "Rift 2", "Rift 3", "Rift 5", "Tree done"];
+
+function profiles() {
+  const pick = process.argv[3] === undefined ? null : Number(process.argv[3]);
+  const fmt = (s?: number) => (s === undefined ? "—" : formatTime(s)).padStart(14);
+  if (pick === null) console.log("".padEnd(34) + PROFILE_MARKS.map((m) => m.padStart(14)).join("") + "     played");
+  PROFILES.forEach((p, i) => {
+    if (pick !== null && pick !== i) return;
+    const ms = playthrough(p, 5, p.limit);
+    const extra = ms["Rift 5"] === undefined ? `  (stopped at ${formatTime(ms["(end)"])})` : "";
+    console.log(p.name.padEnd(34) + PROFILE_MARKS.map((m) => fmt(ms[m])).join("") + fmt(ms["(played)"]) + extra);
+    const trials = TRIALS.filter((d) => ms[`Trial ${d.name}`] !== undefined).map((d) => `${d.name} ${formatTime(ms[`Trial ${d.name}`])}`);
+    if (trials.length) console.log("".padEnd(34) + "Trials won: " + trials.join(" · "));
+  });
+}
+if (mode === "profiles") profiles();
