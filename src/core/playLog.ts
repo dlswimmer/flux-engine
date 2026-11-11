@@ -52,7 +52,7 @@ function onEvent(event: GameEvent, detail?: string | number) {
       const last = state.collapse.history.at(-1);
       if (last && last.time >= LOG_COLLAPSE_OVER)
         logEntry("collapse", { n: last.number, run: Math.round(last.time), shards: last.shards.toNumber() });
-      else count("collapses", 1);
+      else count("quickCollapses", 1);
       break;
     }
     case "rift": {
@@ -118,7 +118,7 @@ export function exportPlayLog(): string {
     game: "Flux Engine playtest log",
     exported: new Date().toISOString(),
     columns: ["real time (ms)", "game time played (s)", "event", "details"],
-    note: "snapshot counts (taps, keys, overdrives, lattices, vents, collapses, overcharge) are since the previous snapshot",
+    note: "snapshot counts (taps, keys, overdrives, lattices, vents, quickCollapses, overcharge) are since the previous snapshot",
     entries,
   });
 }
