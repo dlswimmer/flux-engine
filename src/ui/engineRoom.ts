@@ -56,7 +56,7 @@ interface Effect {
 }
 
 const MAX_PARTICLES = 450;
-const DURATION: Record<GameEvent, number> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4, trial: 2 };
+const DURATION: Partial<Record<GameEvent, number>> = { overdrive: 0.9, lattice: 1.6, vent: 1.2, collapse: 1.6, rift: 2.4, trial: 2 };
 
 export function engineRoomTab(isActive: () => boolean): View & { leave(): void } {
   const canvas = h("canvas", { class: "room-canvas" });
@@ -144,7 +144,7 @@ export function engineRoomTab(isActive: () => boolean): View & { leave(): void }
   for (const kind of Object.keys(DURATION) as GameEvent[])
     on(kind, () => {
       if (!isActive() || document.visibilityState !== "visible") return;
-      effects.push({ kind, t: 0, duration: DURATION[kind] });
+      effects.push({ kind, t: 0, duration: DURATION[kind]! });
       if (kind === "vent") spawnSteam();
       if (kind === "collapse") for (const p of particles) p.speed *= 3;
     });

@@ -3,8 +3,9 @@ import { exportSave, hardReset, importSave, saveGame } from "../core/save";
 import { devResetRift, devResetShards } from "../game/reset";
 import { formatTime } from "../core/format";
 import { hasBackup, jumpTo, loadMilestoneSaves, restoreBackup } from "./devJumps";
-import { h, setClass, setDisabled, setVisible, toggle, type View } from "./dom";
+import { h, setClass, setDisabled, setText, setVisible, toggle, type View } from "./dom";
 import { notify } from "./toast";
+import { clearPlayLog, exportPlayLog, playLogSize, playLogStart } from "../core/playLog";
 
 /** Dev tools show on the dev server (npm run dev) or with ?dev; production builds hide them. */
 export const DEV_MODE = import.meta.env.DEV || new URLSearchParams(location.search).has("dev");
@@ -86,8 +87,40 @@ export function optionsTab(): View {
 
   const toggles = [
     toggle("Autosave", () => state.options.autosave, (v) => (state.options.autosave = v)),
-    toggle("Offline progress", () => state.options.offlineProgress, (v) => (state.options.offlineProgress = v)),
+    toggle("Ask to use time away", () => state.options.offlineProgress, (v) => (state.options.offlineProgress = v)),
   ];
+
+  const logInfo = h("p", { class: "dev-note" });
+  const exportLog = async () => {
+    const text = exportPlayLog();
+    const date = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+    const a = h("a", { href: URL.createObjectURL(new Blob([text], { type: "application/json" })), download: `flux-engine-log-${date}.json` });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+    try {
+      await navigator.clipboard.writeText(text);
+      notify("Log downloaded and copied to clipboard");
+    } catch {
+      notify("Log downloaded");
+    }
+  };
+  const logPanel = h(
+    "div",
+    { class: "panel" },
+    h("h3", {}, "Playtest log"),
+    h(
+      "p",
+      { class: "dev-note" },
+      "Records what you do and when (upgrades, resets, Trials, Rifts, time away, and a snapshot every minute) so a playtest can be reviewed. Nothing leaves your device unless you export it.",
+    ),
+    logInfo,
+    h(
+      "div",
+      { class: "button-row" },
+      h("button", { onClick: exportLog }, "Export log"),
+      tapTwice("Clear log", clearPlayLog, "Log cleared", "secondary"),
+    ),
+  );
 
   const speedButtons = DEV_SPEEDS.map((speed) =>
     h("button", { class: "secondary", onClick: () => (state.options.devSpeed = speed) }, `×${speed}`),
@@ -150,6 +183,7 @@ export function optionsTab(): View {
       box,
     ),
     h("div", { class: "panel" }, h("h3", {}, "Settings"), ...toggles.map((t) => t.root)),
+    logPanel,
     devPanel,
   );
 
@@ -157,6 +191,8 @@ export function optionsTab(): View {
     root,
     update() {
       for (const t of toggles) t.update();
+      const start = playLogStart();
+      setText(logInfo, `${playLogSize()} entries${start ? ` since ${new Date(start).toLocaleString()}` : ""}.`);
       setVisible(devPanel, DEV_MODE);
       if (DEV_MODE) setVisible(restoreRow, hasBackup());
       DEV_SPEEDS.forEach((speed, i) => setClass(speedButtons[i], "active", state.options.devSpeed === speed));

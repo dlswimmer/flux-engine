@@ -368,6 +368,7 @@ export function buyOvercharge(): boolean {
   if (!canBuyOvercharge()) return false;
   state.collapse.shards = state.collapse.shards.sub(overchargeCost());
   state.collapse.overcharge++;
+  emit("overcharge", 1);
   return true;
 }
 
@@ -385,5 +386,6 @@ export function buyMaxOvercharge(): number {
   const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, OVERCHARGE_COST_GROWTH, state.collapse.overcharge);
   state.collapse.shards = state.collapse.shards.sub(cost).max(0);
   state.collapse.overcharge += count;
+  emit("overcharge", count);
   return count;
 }

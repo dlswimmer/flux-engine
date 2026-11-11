@@ -125,12 +125,14 @@ export function startTrial(id: TrialId): boolean {
   // Reset after the Trial starts, so the run begins without the switched-off upgrades (Ignition).
   state.trials.active = id;
   resetForCollapse();
+  emit("trialStart", id);
   return true;
 }
 
 /** Give up: the run restarts with no Trial. */
 export function abandonTrial() {
   if (!state.trials.active) return;
+  emit("trialAbandon", state.trials.active);
   state.trials.active = null;
   resetForCollapse();
 }
@@ -143,7 +145,7 @@ export function completeActiveTrial() {
   const best = state.trials.best[id];
   state.trials.best = { ...state.trials.best, [id]: Math.min(best ?? Infinity, state.collapse.time) };
   state.trials.active = null;
-  emit("trial");
+  emit("trial", id);
 }
 
 /** Every tick: Sprint restarts the run once its time is up. */

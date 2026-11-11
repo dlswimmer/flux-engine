@@ -1,4 +1,5 @@
 import { Decimal, type DecimalSource } from "../lib/decimal";
+import { logEntry } from "./playLog";
 import { SAVE_VERSION, defaultState, replaceState, state, type GameState } from "./state";
 
 const SAVE_KEY = "flux-engine-save";
@@ -111,6 +112,7 @@ export const exportSave = () => toBase64(serialize(state));
 export function importSave(text: string): boolean {
   try {
     replaceState(deserialize(fromBase64(text)));
+    logEntry("save imported");
     saveGame();
     return true;
   } catch (err) {
@@ -120,6 +122,7 @@ export function importSave(text: string): boolean {
 }
 
 export function hardReset() {
+  logEntry("hard reset");
   replaceState(defaultState());
   saveGame();
 }

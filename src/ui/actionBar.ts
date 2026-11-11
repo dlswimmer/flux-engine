@@ -15,7 +15,7 @@ const withCount = (label: string, count: number) => (count > 1 ? `${label} ×${c
 
 export function actionBar(): View {
   const maxButton = h("button", { onClick: maxAll }, "Max All");
-  holdToRepeat(maxButton, maxAll);
+  holdToRepeat(maxButton, maxAll, { noScroll: true });
   const ventButton = h("button", { class: "vent-btn", onClick: vent });
   const overdriveButton = h("button", { class: "secondary", onClick: () => doOverdrive() }, "Overdrive");
   const latticeButton = h("button", { class: "secondary", onClick: () => doLattice() }, "Lattice");
