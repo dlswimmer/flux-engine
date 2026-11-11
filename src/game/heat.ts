@@ -39,7 +39,8 @@ export function updateHeat(dt: number) {
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
   heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
   if (hasNode("even-keel")) heat.amount = Math.min(heat.amount, THROTTLE_START);
-  if (hasThermostat() && heat.autoVent && heat.amount >= heat.autoVentAt) vent();
+  // Pressure Valve: auto-vent off, or the Trial plays itself (autobuyers fill, Thermostat vents).
+  if (hasThermostat() && heat.autoVent && !inTrial("valve") && heat.amount >= heat.autoVentAt) vent();
 }
 
 /** Cold Running throttles every Engine, not just Engine I. */

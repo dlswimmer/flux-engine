@@ -35,7 +35,7 @@ export const SPRINT_LIMIT = 180;
  * much, and 100 melts the run down. Autobuyers left on will melt you, so you buy in batches,
  * vent before the top, and spend Heat on the tiers worth it.
  */
-export const VALVE_HEAT_PER_BUY = 0.5;
+export const VALVE_HEAT_PER_BUY = 1;
 /**
  * Surge Engine: outside a Surge, Engines run at this fraction. Surges last half as long, and an
  * Overdrive or Lattice ends the Surge, so reset autobuyers left on throw your Surges away.
@@ -87,7 +87,7 @@ export const TRIALS: TrialDef[] = [
   {
     id: "valve",
     name: "Pressure Valve",
-    rule: `Heat doesn't build over time: every Engine or Tempo level you buy adds ${VALVE_HEAT_PER_BUY} Heat. At 100 Heat the run melts down and starts over.`,
+    rule: `Heat doesn't build over time: every Engine or Tempo level you buy adds ${VALVE_HEAT_PER_BUY} Heat. At 100 Heat the run melts down and starts over. Auto-vent is off.`,
     reward: "Tempo costs ×7 per level instead of ×8.",
   },
   {

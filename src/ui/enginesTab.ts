@@ -1,4 +1,4 @@
-import { hasTrialReward } from "../game/trials";
+import { hasTrialReward, inTrial } from "../game/trials";
 import { format, formatInt, formatMult, formatTime } from "../core/format";
 import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
@@ -269,7 +269,11 @@ function heatPanel(): View {
           : isSurging()
             ? ""
             : `Engines heat up as they run. Above ${THROTTLE_START}% Flux output drops.`,
-        hasThermostat() && heat.autoVent ? `Auto-vent at ${heat.autoVentAt}%.` : "",
+        inTrial("valve")
+          ? "Pressure Valve: auto-vent is off, and 100% melts the run down."
+          : hasThermostat() && heat.autoVent
+            ? `Auto-vent at ${heat.autoVentAt}%.`
+            : "",
       ];
       setText(status, parts.filter(Boolean).join(" "));
       setClass(status, "hot", throttle < 1);
