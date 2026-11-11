@@ -61,8 +61,13 @@ export function devResetShards() {
   resetForCollapse();
 }
 
-/** Back to before your first Rift: no Essence, Rifts or tree nodes. */
+/**
+ * Back to the Breach point: no Essence, Rifts or tree nodes, and every Shard upgrade back (Rifts
+ * take most of them away, so a reset mid-Rift layer left only the automation ones; David).
+ */
 export function devResetRift() {
+  const owned = state.collapse.upgrades;
+  state.collapse.upgrades = shardUpgrades.defs.filter((d) => owned.includes(d.id) || !d.gate?.()).map((d) => d.id);
   state.rift.essence = D(0);
   state.rift.totalEssence = D(0);
   state.rift.count = 0;
