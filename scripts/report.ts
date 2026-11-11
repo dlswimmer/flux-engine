@@ -24,7 +24,7 @@ import { ENGINE_COUNT } from "../src/core/state";
 import { isHeatUnlocked, isSurging, vent } from "../src/game/heat";
 import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
-import { BALLAST_AWAY_MULT, buyAttunement, canRift, doRift, essenceGain, hasNode, riftNodes } from "../src/game/rift";
+import { ESSENCE_CURVE, BALLAST_AWAY_MULT, buyAttunement, canRift, doRift, essenceGain, hasNode, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { simulate } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
@@ -36,6 +36,7 @@ import { formatInt } from "../src/core/format";
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
 
 const DT = 0.1;
+if (process.env.ESSENCE_GROWTH) ESSENCE_CURVE.growth = Number(process.env.ESSENCE_GROWTH);
 
 export interface Player {
   name: string;
@@ -678,15 +679,18 @@ const STYLES: Style[] = [
   { name: "Auto peak, Rift ASAP (1)", every: 1, collapseAt: "peak", riftAt: 1 },
   { name: "Auto peak, Rift at 8", every: 1, collapseAt: "peak", riftAt: 8 },
   { name: "Auto peak, Rift at 12", every: 1, collapseAt: "peak", riftAt: 12 },
-  { name: "Collapse every 8s", every: 1, collapseAt: 8, riftAt: 4 },
+  { name: "Collapse every 8s, Rift at 20", every: 1, collapseAt: 8, riftAt: 20 },
   { name: "Collapse every 30s", every: 1, collapseAt: 30, riftAt: 4 },
   { name: "Collapse every 2 min", every: 1, collapseAt: 120, riftAt: 4 },
   { name: "Uncapped resets", every: 1, collapseAt: "peak", riftAt: 4, uncapped: true },
   { name: "Uncapped, Collapse every 8s", every: 1, collapseAt: 8, riftAt: 4, uncapped: true },
-  { name: "Relaxed (acts every 10s)", every: 10, collapseAt: "peak", riftAt: 4 },
-  { name: "Checks in every 5 min", every: 300, collapseAt: "peak", riftAt: 4 },
+  { name: "Relaxed (acts every 10s), Rift at 20", every: 10, collapseAt: "peak", riftAt: 20 },
+  { name: "Checks in every 5 min, Rift at 20", every: 300, collapseAt: "peak", riftAt: 20 },
   { name: "Entropy branch", every: 1, collapseAt: "peak", riftAt: 4, branch: "entropy" },
-  { name: "Plays post-Breach Trials", every: 1, collapseAt: "peak", riftAt: 4, trials: true },
+  { name: "Plays post-Breach Trials, Rift at 20", every: 1, collapseAt: "peak", riftAt: 20, trials: true },
+  { name: "Auto peak, Rift at 20", every: 1, collapseAt: "peak", riftAt: 20 },
+  { name: "Auto peak, Rift at 40", every: 1, collapseAt: "peak", riftAt: 40 },
+  { name: "Uncapped, Rift at 20", every: 1, collapseAt: "peak", riftAt: 20, uncapped: true },
 ];
 
 function playStyle(s: Style, hours: number) {
