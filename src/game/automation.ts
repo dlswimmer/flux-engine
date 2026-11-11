@@ -88,14 +88,20 @@ function autoCollapseReady(): boolean {
   return rate < bestRate * 0.97;
 }
 
-/** The run has lasted at least this long since its last reset. */
-const waited = (seconds: number) => state.sinceReset + 1e-9 >= seconds;
+/**
+ * "At most every N seconds": game time of each autobuyer's last claim. While it waits, more
+ * Engine VIII builds up, so the next press claims several at once (one reset instead of many).
+ * Not saved: after a reload the next claim can happen right away.
+ */
+const lastClaim = { overdrive: -Infinity, lattice: -Infinity };
+const cooledDown = (kind: keyof typeof lastClaim, seconds: number) =>
+  state.stats.timePlayed - lastClaim[kind] + 1e-9 >= seconds;
 
 /**
- * The wait only applies once Overdrives need Engine VIII and can come several at a time:
+ * The limit only applies once Overdrives need Engine VIII and can come several at a time:
  * each unlock-phase one needs a different Engine, so waiting there would only lose time.
  */
-const overdriveWaitDone = () => state.overdrives < UNLOCK_PHASE || waited(state.automation.overdriveWait);
+const overdriveWaitDone = () => state.overdrives < UNLOCK_PHASE || cooledDown("overdrive", state.automation.overdriveWait);
 
 let timer = 0;
 
@@ -134,13 +140,15 @@ function runResetAutobuyers() {
   const latticeWanted =
     lattice && !latticeResetsNothing() && state.lattices < auto.latticeMax && canLattice();
   if (latticeWanted) {
-    if (waited(auto.latticeWait)) doLattice(auto.latticeMax - state.lattices);
+    if (cooledDown("lattice", auto.latticeWait) && doLattice(auto.latticeMax - state.lattices))
+      lastClaim.lattice = state.stats.timePlayed;
   } else if (
     overdrive &&
     !overdriveResetsNothing() &&
     state.overdrives < auto.overdriveMax &&
     canOverdrive() &&
-    overdriveWaitDone()
+    overdriveWaitDone() &&
+    doOverdrive(auto.overdriveMax - state.overdrives)
   )
-    doOverdrive(auto.overdriveMax - state.overdrives);
+    lastClaim.overdrive = state.stats.timePlayed;
 }
