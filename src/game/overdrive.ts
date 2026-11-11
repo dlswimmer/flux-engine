@@ -9,12 +9,18 @@ export const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
 const UNLOCK_REQUIREMENT = 10;
 const BASE_REQUIREMENT = 20; // Engine VIII for the first Overdrive past the unlock phase
 const REQUIREMENT_STEP = 10;
+/** Quadratic like Lattices: with Rigid Frame (Lattices keep Overdrives) and no Stop-at, a linear
+ *  requirement let Overdrives climb past 100 after Breach and Overcharge ran away (Essence 1e27
+ *  in 4 min). At 1 that player reaches ~Overcharge 35 in 6 min; the first 10 barely change. */
+const REQUIREMENT_QUADRATIC = 1;
 
 /** Which engine (0-based tier) and how many of it Overdrive number `od` (0-based) needs. */
 function requirementAt(od: number): { tier: number; amount: number } {
   const tier = Math.min(UNLOCK_PHASE - 1 + od, ENGINE_COUNT - 1);
   const amount =
-    od < UNLOCK_PHASE ? UNLOCK_REQUIREMENT : BASE_REQUIREMENT + (od - UNLOCK_PHASE) * REQUIREMENT_STEP;
+    od < UNLOCK_PHASE
+      ? UNLOCK_REQUIREMENT
+      : BASE_REQUIREMENT + (od - UNLOCK_PHASE) * REQUIREMENT_STEP + REQUIREMENT_QUADRATIC * (od - UNLOCK_PHASE) ** 2;
   return { tier, amount };
 }
 
