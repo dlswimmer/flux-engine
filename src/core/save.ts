@@ -31,6 +31,19 @@ const MIGRATIONS: Record<number, (raw: any) => void> = {
     if (t.best) for (const [from, to] of Object.entries(rename)) if (from in t.best) { t.best[to] = t.best[from]; delete t.best[from]; }
     if (t.active in rename) t.active = rename[t.active];
   },
+  // Rift node costs tripled: refund the tree at the old prices (a respec would otherwise refund
+  // at the new ones, 3× what was paid).
+  4: (raw) => {
+    const r = raw?.rift;
+    if (!r || !Array.isArray(r.nodes) || r.nodes.length === 0) return;
+    const OLD: Record<string, number> = {
+      "rift-lens": 1, "head-start": 2, "shard-focus": 3, "even-keel": 5, "long-burn": 10,
+      "self-winding": 20, flashpoint: 5, backdraft: 10, "chain-reaction": 20,
+    };
+    const refund = r.nodes.reduce((sum: number, id: string) => sum + (OLD[id] ?? 0), 0);
+    r.essence = new Decimal(r.essence ?? 0).add(refund);
+    r.nodes = [];
+  },
 };
 
 export function serialize(s: GameState): string {

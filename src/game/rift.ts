@@ -116,13 +116,14 @@ export const NODE_INFO: Record<string, RiftNodeInfo> = {
 
 const branchOpen = (branch: "order" | "entropy") => () => chosenBranch() === null || chosenBranch() === branch;
 
+// Costs ×3 (2026-11-11): at ×1 one 6-Essence Rift bought the whole core and a branch took ~6 more.
 export const riftNodes = new UpgradeSet(
   [
     {
       id: "rift-lens",
       name: "Rift Lens",
       desc: "All Engines gain a bonus from all the Essence you've ever earned.",
-      cost: 1,
+      cost: 3,
       // ^0.25: tuned so the first Collapse after Rift 1 is ~50% of the very first one with
       // just the Lens (~33% with Head Start too). ^2 made every Rift after the first take ~10s.
       effect: () => state.rift.totalEssence.add(1).pow(0.25),
@@ -132,7 +133,7 @@ export const riftNodes = new UpgradeSet(
       id: "head-start",
       name: "Head Start",
       desc: "Start every Collapse with 1 Overdrive (2 with Ignition): Engine V from the first second.",
-      cost: 2,
+      cost: 6,
       requires: ["rift-lens"],
       // Like Ignition: applies to the Collapse you're in, not just the next one.
       onBuy: () => {
@@ -143,7 +144,7 @@ export const riftNodes = new UpgradeSet(
       id: "shard-focus",
       name: "Shard Focus",
       desc: "Gain 2× Shards from Collapsing.",
-      cost: 3,
+      cost: 9,
       requires: ["rift-lens"],
     },
     // Order: steady, idle-friendly.
@@ -151,7 +152,7 @@ export const riftNodes = new UpgradeSet(
       id: "even-keel",
       name: "Even Keel",
       desc: "Heat never rises past 60%, so it never slows Flux (and you never Surge). Gain 2× Shards.",
-      cost: 5,
+      cost: 15,
       requires: ["head-start", "shard-focus"],
       unlocked: branchOpen("order"),
     },
@@ -161,7 +162,7 @@ export const riftNodes = new UpgradeSet(
       effect: () => D(longBurnMult()),
       effectText: (v) => `×${v.toNumber().toFixed(2)}`,
       desc: "Shard gain grows with time in this Rift: ×(1 + minutes ÷ 10), up to ×3.",
-      cost: 10,
+      cost: 30,
       requires: ["even-keel"],
       unlocked: branchOpen("order"),
     },
@@ -169,7 +170,7 @@ export const riftNodes = new UpgradeSet(
       id: "self-winding",
       name: "Self-Winding",
       desc: "Autobuyers act 2× as often, and you gain 2× Shards.",
-      cost: 20,
+      cost: 60,
       requires: ["long-burn"],
       unlocked: branchOpen("order"),
     },
@@ -178,7 +179,7 @@ export const riftNodes = new UpgradeSet(
       id: "flashpoint",
       name: "Flashpoint",
       desc: "Surges peak at ×8 instead of ×4 (×10 with Heat Exchanger).",
-      cost: 5,
+      cost: 15,
       requires: ["head-start", "shard-focus"],
       unlocked: branchOpen("entropy"),
     },
@@ -186,7 +187,7 @@ export const riftNodes = new UpgradeSet(
       id: "backdraft",
       name: "Backdraft",
       desc: "Heat no longer slows Flux. Instead it boosts all Engines, up to ×4 at 100% (and Shards by its square root).",
-      cost: 10,
+      cost: 30,
       requires: ["flashpoint"],
       unlocked: branchOpen("entropy"),
     },
@@ -194,7 +195,7 @@ export const riftNodes = new UpgradeSet(
       id: "chain-reaction",
       name: "Chain Reaction",
       desc: "Surges last 2× as long, Heat builds 2× as fast, and you gain 2× Shards.",
-      cost: 20,
+      cost: 60,
       requires: ["backdraft"],
       unlocked: branchOpen("entropy"),
     },

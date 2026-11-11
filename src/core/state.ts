@@ -6,7 +6,7 @@ export const ENGINE_COUNT = 8;
  * Bump this whenever the save shape changes in a way merge-with-defaults can't
  * handle on its own, and add a matching entry to MIGRATIONS in save.ts.
  */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 /** One finished Collapse, for the recent-runs table on the Stats tab. */
 export interface CollapseRecord {
