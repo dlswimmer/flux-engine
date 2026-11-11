@@ -32,7 +32,9 @@ export const hasAutoCollapse = () => shardUpgrades.has("selfcollapse");
 // that and speed up every Collapse, so automation is its own progression: by the
 // late Collapse layer they beat holding M and the run is about decisions, not keys.
 const BASE_INTERVAL = 3;
-const SPEEDUP_PER_COLLAPSE = 0.9;
+// ×0.95: max speed at Collapse 80 (59 with Overclock). At ×0.9 it came at Collapse 39, before
+// most players could afford Overclock, which made it worthless (playtest, 2026-11-11).
+const SPEEDUP_PER_COLLAPSE = 0.95;
 /** One game tick: autobuyers can't act more often than the game updates. */
 export const MIN_INTERVAL = 0.05;
 
