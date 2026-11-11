@@ -107,11 +107,13 @@ function waitSetting(get: () => number, set: (v: number) => void) {
   const input = h("input", {
     type: "number",
     min: 0,
-    step: 1,
+    // Decimals allowed (e.g. 0.2s); phones show a keypad with a decimal point.
+    step: 0.1,
+    inputmode: "decimal",
     placeholder: "0",
     onChange: () => {
-      const v = Number(input.value.trim());
-      set(Number.isFinite(v) ? Math.min(600, Math.max(0, v)) : 0);
+      const v = Number(input.value.trim().replace(",", "."));
+      set(Number.isFinite(v) ? Math.min(600, Math.max(0, Math.round(v * 100) / 100)) : 0);
     },
   });
   const el = h("label", { class: "auto-setting" }, "At most every", input, "s");
