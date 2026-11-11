@@ -97,6 +97,7 @@ h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing
   overflow: hidden;
 }
 .progress-fill { height: 100%; background: linear-gradient(90deg, var(--flux-dim), var(--flux)); transition: width 0.2s; }
+.progress-fill.past-horizon { background: linear-gradient(90deg, var(--shard-dim), var(--shard)); }
 .progress-label { position: absolute; inset: 0; font-size: 12px; line-height: 18px; }
 .shard-count { margin-top: 8px; color: var(--shard); font-family: var(--mono); }
 .collapse-btn {
