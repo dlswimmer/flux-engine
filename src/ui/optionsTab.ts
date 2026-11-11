@@ -157,7 +157,7 @@ export function optionsTab(): View {
       "div",
       { class: "button-row" },
       tapTwice("Reset Shards (keep upgrades)", devResetShards, "Shards and Overcharge reset; upgrades kept"),
-      tapTwice("Reset Rift progress", devResetRift, "Essence, Rifts and the Rift tree reset"),
+      tapTwice("Reset Rift progress", devResetRift, "Back to Breach: Essence, Rifts and the tree reset, Shard upgrades restored"),
     ),
     h("p", { class: "dev-note" }, "Jump to a milestone (a save from the sim's player at that point). Your own save is backed up first."),
     jumpRow,
