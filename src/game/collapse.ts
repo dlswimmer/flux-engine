@@ -5,7 +5,7 @@ import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
 import { BREACH_TRIALS, TRIALS_UNLOCK, TRIAL_KEEPS, isTrialsUnlocked, activeTrial, completeActiveTrial, hasTrialReward, trialDef } from "./trials";
-import { riftShardMult } from "./rift";
+import { OVERCHARGE_GROWTH_COIL, hasNode, riftShardMult } from "./rift";
 import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
 
@@ -361,7 +361,9 @@ export const overchargeMult = () =>
   activeTrial() !== null
     ? D(1)
     : state.collapse.overcharge <= 1000 ? D(OVERCHARGE_MULT ** state.collapse.overcharge) : D(OVERCHARGE_MULT).pow(state.collapse.overcharge);
-export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(OVERCHARGE_COST_GROWTH).pow(state.collapse.overcharge));
+/** Overcharge Coil (Rift node) lowers the growth. */
+const overchargeGrowth = () => (hasNode("overcharge-coil") ? OVERCHARGE_GROWTH_COIL : OVERCHARGE_COST_GROWTH);
+export const overchargeCost = () => D(OVERCHARGE_BASE_COST).mul(D(overchargeGrowth()).pow(state.collapse.overcharge));
 export const canBuyOvercharge = () => isOverchargeUnlocked() && state.collapse.shards.gte(overchargeCost());
 
 export function buyOvercharge(): boolean {
@@ -377,13 +379,13 @@ export function buyMaxOvercharge(): number {
   const count = Decimal.affordGeometricSeries(
     state.collapse.shards,
     OVERCHARGE_BASE_COST,
-    OVERCHARGE_COST_GROWTH,
+    overchargeGrowth(),
     state.collapse.overcharge,
   )
     .floor()
     .toNumber();
   if (!(count > 0) || !Number.isFinite(count)) return 0;
-  const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, OVERCHARGE_COST_GROWTH, state.collapse.overcharge);
+  const cost = Decimal.sumGeometricSeries(count, OVERCHARGE_BASE_COST, overchargeGrowth(), state.collapse.overcharge);
   state.collapse.shards = state.collapse.shards.sub(cost).max(0);
   state.collapse.overcharge += count;
   emit("overcharge", count);

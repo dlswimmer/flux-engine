@@ -25,13 +25,22 @@ export const RIFT_OVERCHARGE = 24;
  */
 const ESSENCE_PER_LEVEL = 0.75;
 
+// ---------- New-node numbers ----------
+
+/** Overcharge Coil: cost growth per Overcharge level (×1.35 without it). */
+export const OVERCHARGE_GROWTH_COIL = 1.3;
+const TRIAL_MEMORY_PER_TRIAL = 0.25;
+export const BALLAST_AWAY_MULT = 1.5;
+/** Redline: venting at this Heat or more doubles Shards for that Surge. */
+export const REDLINE_HEAT = 95;
+
 export const isRiftUnlocked = () => isBreached() || state.rift.count > 0;
 export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
 
 export function essenceGain(): Decimal {
   if (!canRift()) return D(0);
   const over = state.collapse.overcharge - RIFT_OVERCHARGE;
-  return D(Math.floor(1 + over * ESSENCE_PER_LEVEL));
+  return D(Math.floor((1 + over * ESSENCE_PER_LEVEL) * attunementEssenceMult()));
 }
 
 export function doRift(): boolean {
@@ -95,12 +104,23 @@ export interface RiftNodeInfo {
   row: number;
 }
 
-const ORDER = ["even-keel", "long-burn", "self-winding"];
-const ENTROPY = ["flashpoint", "backdraft", "chain-reaction"];
+const ORDER = ["even-keel", "long-burn", "self-winding", "ballast", "perpetual"];
+const ENTROPY = ["flashpoint", "backdraft", "chain-reaction", "redline", "critical-mass"];
 const owns = (id: string) => state.rift.nodes.includes(id);
-/** Picking the first node of a branch locks the other one until you respec. */
-export const chosenBranch = (): "order" | "entropy" | null =>
-  ORDER.some(owns) ? "order" : ENTROPY.some(owns) ? "entropy" : null;
+/**
+ * Picking the first node of a branch locks the other one until you respec. Nodes are saved in
+ * buy order, so after Crossover the first branch node bought still says which one is yours.
+ */
+export const chosenBranch = (): "order" | "entropy" | null => {
+  const first = state.rift.nodes.find((id) => ORDER.includes(id) || ENTROPY.includes(id));
+  return first === undefined ? null : ORDER.includes(first) ? "order" : "entropy";
+};
+/** Crossover's second branch: rows 2-4 of the branch you didn't choose, at 2× their cost. */
+export const CROSSOVER_COST_MULT = 2;
+const isCrossoverNode = (id: string) => {
+  const branch = NODE_INFO[id]?.branch;
+  return branch !== undefined && branch !== "core" && chosenBranch() !== null && branch !== chosenBranch();
+};
 
 export const NODE_INFO: Record<string, RiftNodeInfo> = {
   "rift-lens": { branch: "core", row: 0 },
@@ -112,9 +132,20 @@ export const NODE_INFO: Record<string, RiftNodeInfo> = {
   flashpoint: { branch: "entropy", row: 2 },
   backdraft: { branch: "entropy", row: 3 },
   "chain-reaction": { branch: "entropy", row: 4 },
+  "overcharge-coil": { branch: "core", row: 2 },
+  "trial-memory": { branch: "core", row: 2 },
+  ballast: { branch: "order", row: 5 },
+  perpetual: { branch: "order", row: 6 },
+  redline: { branch: "entropy", row: 5 },
+  "critical-mass": { branch: "entropy", row: 6 },
+  crossover: { branch: "core", row: 7 },
 };
 
-const branchOpen = (branch: "order" | "entropy") => () => chosenBranch() === null || chosenBranch() === branch;
+/** Rows 2-4: your branch, or the other one once you own Crossover. */
+const branchOpen = (branch: "order" | "entropy") => () =>
+  chosenBranch() === null || chosenBranch() === branch || owns("crossover");
+/** Rows 5-6 (the capstones): only ever your own branch. */
+const homeOnly = (branch: "order" | "entropy") => () => chosenBranch() === null || chosenBranch() === branch;
 
 // Costs ×3 (2026-11-11): at ×1 one 6-Essence Rift bought the whole core and a branch took ~6 more.
 export const riftNodes = new UpgradeSet(
@@ -146,6 +177,22 @@ export const riftNodes = new UpgradeSet(
       desc: "Gain 2× Shards from Collapsing.",
       cost: 9,
       requires: ["rift-lens"],
+    },
+    {
+      id: "overcharge-coil",
+      name: "Overcharge Coil",
+      desc: `Each Overcharge level costs ×${OVERCHARGE_GROWTH_COIL} the last instead of ×1.35, so you reach deeper Overcharge (and more Essence) each Rift.`,
+      cost: 24,
+      requires: ["head-start", "shard-focus"],
+    },
+    {
+      id: "trial-memory",
+      name: "Trial Memory",
+      desc: `Every Trial you've won gives ×${1 + TRIAL_MEMORY_PER_TRIAL} Shards, added up (×2.5 with all 6).`,
+      cost: 24,
+      requires: ["head-start", "shard-focus"],
+      effect: () => D(trialMemoryMult()),
+      effectText: (v) => `×${v.toNumber().toFixed(2)}`,
     },
     // Order: steady, idle-friendly.
     {
@@ -199,19 +246,62 @@ export const riftNodes = new UpgradeSet(
       requires: ["backdraft"],
       unlocked: branchOpen("entropy"),
     },
+    // Rows 5-6: each branch's capstones. Crossover never opens these on the other side.
+    {
+      id: "ballast",
+      name: "Ballast",
+      desc: `Time away counts ${BALLAST_AWAY_MULT}× when you choose to use it.`,
+      cost: 120,
+      requires: ["self-winding"],
+      unlocked: homeOnly("order"),
+    },
+    {
+      id: "perpetual",
+      name: "Perpetual",
+      desc: "Overcharge buys itself, and you can set the Rift to open on its own at an Essence amount.",
+      cost: 240,
+      requires: ["ballast"],
+      unlocked: homeOnly("order"),
+    },
+    {
+      id: "redline",
+      name: "Redline",
+      desc: `Vent at ${REDLINE_HEAT}% Heat or more and that Surge gives 2× Shards.`,
+      cost: 120,
+      requires: ["chain-reaction"],
+      unlocked: homeOnly("entropy"),
+    },
+    {
+      id: "critical-mass",
+      name: "Critical Mass",
+      desc: "Heat keeps building during a Surge, 2× as fast, and you can vent again mid-Surge: the new Surge multiplies the old one (up to the strongest Surge squared).",
+      cost: 240,
+      requires: ["redline"],
+      unlocked: homeOnly("entropy"),
+    },
+    {
+      id: "crossover",
+      name: "Crossover",
+      desc: `Opens the first three nodes of the other branch, at ${CROSSOVER_COST_MULT}× their cost.`,
+      cost: 300,
+      requires: ["overcharge-coil", "trial-memory"],
+      gate: () => (owns("perpetual") || owns("critical-mass") ? null : "Finish your branch first"),
+    },
   ],
   () => state.rift.nodes,
   { get: () => state.rift.essence, set: (v) => (state.rift.essence = v) },
+  () => false,
+  (def) => (isCrossoverNode(def.id) ? D(def.cost).mul(CROSSOVER_COST_MULT) : def.cost),
 );
 
 export const hasNode = (id: string) => riftNodes.has(id);
 
 export const spentEssence = (): Decimal =>
-  state.rift.nodes.reduce((sum, id) => sum.add(riftNodes.get(id).cost), D(0));
+  state.rift.nodes.reduce((sum, id) => sum.add(riftNodes.cost(id)), D(0));
 
 /** Rift-tree multiplier on every Engine. */
 export function riftEngineMult(): Decimal {
-  let mult = riftNodes.effect("rift-lens");
+  let mult = riftNodes.effect("rift-lens").mul(attunementEngineMult());
   // Uses the draining bar during a Surge, so the Heat you vent keeps burning instead of the
   // bonus vanishing the moment you vent.
   if (hasNode("backdraft")) mult = mult.mul(1 + (3 * displayedHeat()) / 100);
@@ -225,8 +315,35 @@ export function riftShardMult(): number {
   // ×2, not ×1.5: capping Heat also gives up Surges, which pay Shards after Breach.
   if (hasNode("even-keel")) mult *= 2;
   if (hasNode("long-burn")) mult *= longBurnMult();
+  if (hasNode("trial-memory")) mult *= trialMemoryMult();
   return mult;
 }
 
 /** Head Start stacks with Ignition: +1 Overdrive at the start of every Collapse. */
 export const headStartOverdrives = () => (state.collapse.upgrades.includes("ignition") ? 1 : 0) + 1;
+
+export const trialMemoryMult = () => 1 + TRIAL_MEMORY_PER_TRIAL * state.trials.completed.length;
+
+// ---------- Attunement: the repeatable Essence sink ----------
+// Bought with Essence, kept through Rifts and respecs. The Engine ×2 is small next to a node;
+// the +5% Essence (added up, not compounding) is what keeps spare Essence worth earning.
+
+export const ATTUNEMENT_RIFTS = 3;
+const ATTUNEMENT_BASE_COST = 10;
+const ATTUNEMENT_COST_GROWTH = 1.6;
+const ATTUNEMENT_ENGINE_MULT = 2;
+const ATTUNEMENT_ESSENCE = 0.05;
+
+export const isAttunementUnlocked = () => state.rift.count >= ATTUNEMENT_RIFTS;
+export const attunementCost = () =>
+  D(Math.ceil(ATTUNEMENT_BASE_COST * ATTUNEMENT_COST_GROWTH ** state.rift.attunement));
+export const canAttune = () => isAttunementUnlocked() && state.rift.essence.gte(attunementCost());
+export function buyAttunement(): boolean {
+  if (!canAttune()) return false;
+  state.rift.essence = state.rift.essence.sub(attunementCost());
+  state.rift.attunement++;
+  emit("attunement");
+  return true;
+}
+export const attunementEngineMult = () => D(ATTUNEMENT_ENGINE_MULT).pow(state.rift.attunement);
+export const attunementEssenceMult = () => 1 + ATTUNEMENT_ESSENCE * state.rift.attunement;

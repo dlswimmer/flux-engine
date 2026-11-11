@@ -8,6 +8,7 @@ export type GameEvent =
   | "vent"
   | "collapse"
   | "rift"
+  | "attunement"
   | "trial"
   | "trialStart"
   | "trialAbandon"
@@ -34,6 +35,6 @@ export function emit(event: GameEvent, detail?: string | number) {
 
 /** Every event, for the playtest log. */
 export function onAny(fn: (event: GameEvent, detail?: string | number) => void) {
-  const all: GameEvent[] = ["overdrive", "lattice", "vent", "collapse", "rift", "trial", "trialStart", "trialAbandon", "upgrade", "overcharge"];
+  const all: GameEvent[] = ["overdrive", "lattice", "vent", "collapse", "rift", "attunement", "trial", "trialStart", "trialAbandon", "upgrade", "overcharge"];
   for (const e of all) on(e, (d) => fn(e, d));
 }

@@ -1,6 +1,7 @@
 import { formatTime } from "../core/format";
 import { state } from "../core/state";
 import { trialDef } from "../game/trials";
+import { BALLAST_AWAY_MULT, hasNode } from "../game/rift";
 import { h } from "./dom";
 
 /** "You were away 12m. Use that time?" The game stays paused until the player answers. */
@@ -19,6 +20,7 @@ export function askAboutAway(seconds: number): Promise<boolean> {
         { class: "panel away-box", role: "dialog", "aria-modal": "true" },
         h("h3", {}, "Welcome back"),
         h("p", {}, `You were away for ${formatTime(seconds)}. The game paused while you were gone.`),
+        hasNode("ballast") ? h("p", {}, `Ballast: it counts as ${formatTime(seconds * BALLAST_AWAY_MULT)}.`) : null,
         trial ? h("p", { class: "away-warn" }, `You're in the ${trial.name} Trial: used time counts toward it.`) : null,
         h(
           "div",

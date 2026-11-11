@@ -24,12 +24,14 @@ import { ENGINE_COUNT } from "../src/core/state";
 import { isHeatUnlocked, isSurging, vent } from "../src/game/heat";
 import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
-import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
+import { BALLAST_AWAY_MULT, buyAttunement, canRift, doRift, essenceGain, hasNode, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { simulate } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
 import { BREACH_TRIALS, TRIALS, VALVE_HEAT_PER_BUY, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
+import { MILESTONE_SAVES } from "../src/dev/milestoneSaves";
+import { formatInt } from "../src/core/format";
 
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
 
@@ -61,9 +63,28 @@ export interface Player {
 }
 
 const NODE_PLAN = {
-  order: ["rift-lens", "head-start", "shard-focus", "even-keel", "long-burn", "self-winding"],
-  entropy: ["rift-lens", "head-start", "shard-focus", "flashpoint", "backdraft", "chain-reaction"],
+  order: [
+    "rift-lens", "head-start", "shard-focus", "even-keel", "overcharge-coil", "long-burn", "trial-memory", "self-winding",
+    "ballast", "perpetual", "crossover", "flashpoint", "backdraft", "chain-reaction",
+  ],
+  entropy: [
+    "rift-lens", "head-start", "shard-focus", "flashpoint", "overcharge-coil", "backdraft", "trial-memory", "chain-reaction",
+    "redline", "critical-mass", "crossover", "even-keel", "long-burn", "self-winding",
+  ],
 };
+/** The first branch alone (the whole tree before the expansion). */
+const FIRST_BRANCH = { order: "self-winding", entropy: "chain-reaction" };
+
+/** Rift nodes in plan order, saving up for the next one; Attunement once the plan is done. */
+function spendEssence(branch: "order" | "entropy") {
+  for (const id of NODE_PLAN[branch]) {
+    if (riftNodes.has(id)) continue;
+    if (!riftNodes.buy(id)) return;
+  }
+  while (buyAttunement()) {
+    /* buy every level affordable */
+  }
+}
 
 function buyUpgrades(order: string[]) {
   for (;;) {
@@ -109,7 +130,7 @@ export function playthrough(
       const pos = t % cycle;
       if (pos >= p.session.play - DT / 2) {
         const away = Math.max(DT, cycle - pos);
-        if (p.session.mode === "closed") simulate(away);
+        if (p.session.mode === "closed") simulate(away * (hasNode("ballast") ? BALLAST_AWAY_MULT : 1));
         else for (let left = away; left > 0; left -= 60) simulate(Math.min(60, left));
         t += away;
         awayTime += away;
@@ -128,7 +149,9 @@ export function playthrough(
     if (canRift() && essenceGain().gte(p.riftAt)) {
       doRift();
       mark(`Rift ${state.rift.count}`);
-      for (const id of NODE_PLAN[p.branch]) riftNodes.buy(id);
+      spendEssence(p.branch);
+      if (riftNodes.has(FIRST_BRANCH[p.branch])) mark("Branch done");
+      if (riftNodes.has("crossover")) mark("Crossover");
       if (NODE_PLAN[p.branch].every((id) => riftNodes.has(id))) mark("Tree done");
       buyUpgrades(p.upgradeOrder);
       bestRate = 0;
@@ -628,3 +651,138 @@ function breachPacing() {
   }
 }
 if (mode === "breach") breachPacing();
+
+// ---------- Post-Breach play styles ----------
+
+/**
+ * From the Breach dev save, plays `HOURS` (default 6) with different post-Breach habits: how
+ * fast to Collapse, when to Rift, capped or uncapped reset autobuyers, how often the player acts.
+ * `npm run report -- styles` (or `styles 3` for one row). Rift nodes in NODE_PLAN.order, then Attunement.
+ */
+interface Style {
+  name: string;
+  /** Seconds between the player's actions. */
+  every: number;
+  /** Collapse at this run length, or the game's auto-Collapse (Shards/sec peak). */
+  collapseAt: number | "peak";
+  /** Rift at this much Essence, or when Essence per hour (this Rift) peaks. */
+  riftAt: number | "best";
+  /** Overdrive and Lattice autobuyers with no Stop-at limit. */
+  uncapped?: boolean;
+  /** Play Sprint and Surge Engine once they open (after Rift 2). */
+  trials?: boolean;
+  branch?: "order" | "entropy";
+}
+const STYLES: Style[] = [
+  { name: "Auto peak, Rift at 4", every: 1, collapseAt: "peak", riftAt: 4 },
+  { name: "Auto peak, Rift ASAP (1)", every: 1, collapseAt: "peak", riftAt: 1 },
+  { name: "Auto peak, Rift at 8", every: 1, collapseAt: "peak", riftAt: 8 },
+  { name: "Auto peak, Rift at 12", every: 1, collapseAt: "peak", riftAt: 12 },
+  { name: "Collapse every 8s", every: 1, collapseAt: 8, riftAt: 4 },
+  { name: "Collapse every 30s", every: 1, collapseAt: 30, riftAt: 4 },
+  { name: "Collapse every 2 min", every: 1, collapseAt: 120, riftAt: 4 },
+  { name: "Uncapped resets", every: 1, collapseAt: "peak", riftAt: 4, uncapped: true },
+  { name: "Uncapped, Collapse every 8s", every: 1, collapseAt: 8, riftAt: 4, uncapped: true },
+  { name: "Relaxed (acts every 10s)", every: 10, collapseAt: "peak", riftAt: 4 },
+  { name: "Checks in every 5 min", every: 300, collapseAt: "peak", riftAt: 4 },
+  { name: "Entropy branch", every: 1, collapseAt: "peak", riftAt: 4, branch: "entropy" },
+  { name: "Plays post-Breach Trials", every: 1, collapseAt: "peak", riftAt: 4, trials: true },
+];
+
+function playStyle(s: Style, hours: number) {
+  replaceState(deserialize(MILESTONE_SAVES.find((m) => m.name === "Breach")!.save));
+  const branch = s.branch ?? "order";
+  const a = state.automation;
+  a.collapse = s.collapseAt === "peak";
+  a.collapseShards = 0;
+  a.overdrive = a.lattice = true;
+  a.overdriveMax = s.uncapped ? Infinity : 10;
+  a.latticeMax = s.uncapped ? Infinity : 1;
+  const marks: Record<string, number> = {};
+  const hourly: string[] = [];
+  let t = 0;
+  let step = 0;
+  let riftStart = 0;
+  let bestRate = 0;
+  let trialStart = 0;
+  const retryAt: Partial<Record<TrialId, number>> = {};
+  let lastHour = 0;
+  let collapsesAtHour = state.stats.collapses;
+  const every = Math.round(s.every / DT);
+  while (t < hours * 3600) {
+    tick(DT);
+    t += DT;
+    step++;
+    if (Math.floor(t / 3600) > lastHour) {
+      lastHour = Math.floor(t / 3600);
+      hourly.push(`${lastHour}h: ${state.rift.count} Rifts, ${formatInt(state.rift.totalEssence)} Essence, Attune ${state.rift.attunement}, ${formatInt(state.stats.collapses - collapsesAtHour)} Collapses`);
+      collapsesAtHour = state.stats.collapses;
+    }
+    if (step % every) continue;
+    const rifts = state.rift.count;
+    // Perpetual's auto-Rift may have Rifted in between: spend right away.
+    if (canRift()) {
+      const gain = essenceGain().toNumber();
+      let go = false;
+      if (s.riftAt === "best") {
+        const rate = gain / Math.max(1, t - riftStart);
+        if (rate >= bestRate) bestRate = rate;
+        else go = rate < bestRate * 0.97;
+      } else go = gain >= s.riftAt;
+      if (go && !activeTrial()) doRift();
+    }
+    if (state.rift.count > rifts) {
+      riftStart = t;
+      bestRate = 0;
+      for (let r = rifts + 1; r <= state.rift.count; r++) marks[`Rift ${r}`] ??= t;
+    }
+    spendEssence(branch);
+    if (riftNodes.has(FIRST_BRANCH[branch])) marks["Branch done"] ??= t;
+    if (riftNodes.has("crossover")) marks["Crossover"] ??= t;
+    if (NODE_PLAN[branch].every((id) => riftNodes.has(id))) marks["Tree done"] ??= t;
+    // Perpetual: let it Rift at the bot's own threshold (a fixed number; "best" keeps doing it by hand).
+    a.rift = typeof s.riftAt === "number";
+    a.riftAt = typeof s.riftAt === "number" ? s.riftAt : 10;
+
+    if (s.trials && state.rift.count >= 2) {
+      const active = activeTrial();
+      if (active && t - trialStart > TRIAL_GIVE_UP) {
+        abandonTrial();
+        retryAt[active] = state.rift.count + 1;
+      } else if (!active) {
+        const next = TRIALS.find(
+          (d) => !hasTrialReward(d.id) && isTrialAvailable(d.id) && state.rift.count >= (retryAt[d.id] ?? 0),
+        );
+        if (next && startTrial(next.id)) trialStart = t;
+      }
+    }
+    for (const d of TRIALS) if (hasTrialReward(d.id) && !BREACH_TRIALS.includes(d.id)) marks[`Trial ${d.name}`] ??= t;
+    const holdResets = activeTrial() === "surge" && isSurging();
+    a.overdrive = a.lattice = !holdResets;
+
+    if (typeof s.collapseAt === "number" && canCollapse() && state.collapse.time >= s.collapseAt) doCollapse();
+    buyUpgrades([]);
+    buyMaxOvercharge();
+    maxAll();
+  }
+  return { marks, hourly };
+}
+
+function styles() {
+  const pick = process.argv[3] === undefined ? null : Number(process.argv[3]);
+  const hours = Number(process.env.HOURS ?? 6);
+  const f = (x?: number) => (x === undefined ? "—" : formatTime(x));
+  STYLES.forEach((s, i) => {
+    if (pick !== null && pick !== i) return;
+    const { marks, hourly } = playStyle(s, hours);
+    console.log(`${s.name}  (after Breach)`);
+    console.log(
+      `  Rift 1 ${f(marks["Rift 1"])} · Rift 5 ${f(marks["Rift 5"])} · Rift 10 ${f(marks["Rift 10"])} · Rift 20 ${f(marks["Rift 20"])}` +
+        ` · first branch ${f(marks["Branch done"])} · Crossover ${f(marks.Crossover)} · tree ${f(marks["Tree done"])}`,
+    );
+    const trials = TRIALS.filter((d) => marks[`Trial ${d.name}`] !== undefined).map((d) => `${d.name} ${f(marks[`Trial ${d.name}`])}`);
+    if (trials.length) console.log("  Trials: " + trials.join(" · "));
+    console.log("  " + hourly.join("\n  "));
+  });
+}
+if (mode === "styles") styles();

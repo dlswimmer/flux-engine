@@ -1,4 +1,5 @@
 import { tick } from "../game/tick";
+import { BALLAST_AWAY_MULT, hasNode } from "../game/rift";
 import { logEntry } from "./playLog";
 import { state } from "./state";
 
@@ -38,7 +39,8 @@ function cameBack(seconds: number, ask: AskAway) {
   }
   asking = true;
   ask(seconds).then((use) => {
-    if (use) simulate(seconds * state.options.devSpeed);
+    // Ballast (Rift node): used time away counts 1.5×.
+    if (use) simulate(seconds * state.options.devSpeed * (hasNode("ballast") ? BALLAST_AWAY_MULT : 1));
     logEntry("away", { seconds: Math.round(seconds), used: use, trial: state.trials.active });
     asking = false;
     state.meta.lastTick = Date.now();
