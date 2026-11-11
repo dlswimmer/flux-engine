@@ -26,7 +26,7 @@ import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { simulate } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
-import { TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
+import { BREACH_TRIALS, TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
 
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
@@ -54,6 +54,8 @@ export interface Player {
    * tab closed, max 1000 steps), "background" = a hidden tab, caught up once a minute.
    */
   session?: { play: number; away: number; mode: "closed" | "background" };
+  /** Stop once Breach is bought (pacing checks for the Collapse layer). */
+  stopAtBreach?: boolean;
 }
 
 const NODE_PLAN = {
@@ -95,7 +97,7 @@ export function playthrough(
   let since = 0;
   let bestRate = 0;
   let trialStart = 0;
-  const retryAt: Partial<Record<TrialId, number>> = {};
+  const retryAt: Partial<Record<TrialId, { rift: number; upgrades: number }>> = {};
   const actEvery = Math.round(p.every / DT);
   let step = 0;
   let awayTime = 0;
@@ -118,6 +120,7 @@ export function playthrough(
     if (p.ventAt !== null && isHeatUnlocked() && state.heat.amount >= p.ventAt) vent();
     if (step % actEvery) continue;
     since = 0;
+    if (p.stopAtBreach && isBreached()) break;
 
     // Rift layer
     if (canRift() && essenceGain().gte(p.riftAt)) {
@@ -131,14 +134,26 @@ export function playthrough(
     }
 
     // Trials: start the next one at the top of a run; give up after TRIAL_GIVE_UP and retry
-    // after the next Rift.
-    if (p.trials) {
+    // after the next Rift or 3 more Shard upgrades (once the player is stronger). Every player plays the ones Breach needs; `trials` plays all.
+    {
       const active = activeTrial();
       if (active && t - trialStart > TRIAL_GIVE_UP) {
         abandonTrial();
-        retryAt[active] = state.rift.count + 1; // try again after the next Rift
+        retryAt[active] = { rift: state.rift.count + 1, upgrades: state.collapse.upgrades.length + 3 };
       } else if (!active) {
-        const next = TRIALS.find((d) => !hasTrialReward(d.id) && isTrialAvailable(d.id) && state.rift.count >= (retryAt[d.id] ?? 0));
+        // Before Breach only the Trials it needs (the rest are out of reach until after a Rift or two).
+        // Sprint and Hollow Core are out of reach until after Rift 2.
+        const wanted = (d: (typeof TRIALS)[number]) =>
+          BREACH_TRIALS.includes(d.id) || (!!p.trials && isBreached() && state.rift.count >= 2);
+        const ready = (id: TrialId) => {
+          const r = retryAt[id];
+          return !r || state.rift.count >= r.rift || state.collapse.upgrades.length >= r.upgrades;
+        };
+        // Fixed Tempo needs fast resets: a player who has tried it waits for the Overdrive autobuyer.
+        const strongEnough = (id: TrialId) => id !== "fixed" || shardUpgrades.has("automators2");
+        const next = TRIALS.find(
+          (d) => wanted(d) && !hasTrialReward(d.id) && isTrialAvailable(d.id) && ready(d.id) && strongEnough(d.id),
+        );
         if (next && startTrial(next.id)) trialStart = t;
       }
     }
@@ -155,9 +170,12 @@ export function playthrough(
       if (c >= 10) mark("Collapse 10");
       if (totalCollapses() >= 15) mark("Collapse 15");
       for (const d of TRIALS) if (hasTrialReward(d.id)) mark(`Trial ${d.name}`);
+      if (c >= 1) mark(`#${c}`);
       if (TRIALS.every((d) => hasTrialReward(d.id))) mark("All Trials");
       buyUpgrades(p.upgradeOrder);
-      if (shardUpgrades.has("automators")) mark("Automators");
+      for (const id of state.collapse.upgrades) if (state.rift.count === 0) mark(`+${id}`);
+      if (shardUpgrades.has("auto1")) mark("Automators");
+      if (shardUpgrades.has("bulk")) mark("Bulk");
       if (shardUpgrades.has("automators2")) mark("Foreman");
       if (shardUpgrades.has("selfcollapse")) mark("Self-Collapse");
       if (isBreached()) mark("Breach");
@@ -179,15 +197,17 @@ export function playthrough(
 
     // Inside a run: the player handles resets until Foreman does, and presses Max All.
     const latMax = shardUpgrades.has("latticeworks") ? p.lattices[1] : p.lattices[0];
-    if (shardUpgrades.has("automators2")) {
-      const a = state.automation;
-      a.overdrive = a.lattice = true;
-      a.overdriveMax = 10;
-      a.latticeMax = latMax;
-      a.collapse = true;
-      a.collapseShards = 0;
-    } else if (state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
-    else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
+    const a = state.automation;
+    a.overdriveMax = 10;
+    a.latticeMax = latMax;
+    a.collapse = true;
+    a.collapseShards = 0;
+    a.overdrive = shardUpgrades.has("automators2");
+    a.lattice = shardUpgrades.has("autolattice");
+    // By hand, whatever isn't automated yet (the Lattice autobuyer goes first, so an Overdrive
+    // by hand would only be reset by it).
+    if (!a.lattice && state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
+    else if (!a.overdrive && state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
     maxAll();
   }
   void since;
@@ -345,8 +365,8 @@ function devSaves() {
   const wanted: Record<string, string> = {
     "Collapse 1": "Just after your first Collapse: 1 Shard, nothing bought",
     "Collapse 3": "Heat just unlocked",
-    Automators: "Autobuyers just bought",
-    Foreman: "Overdrive/Lattice autobuyers just bought",
+    Automators: "First autobuyer (Engine I) just bought",
+    Foreman: "Overdrive autobuyer just bought",
     Breach: "Breach just bought: Overcharge and the road to the Rift",
     "Rift 1": "Just after your first Rift",
     "Rift 2": "Just after your second Rift",
@@ -383,11 +403,10 @@ function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): num
     if (!startTrial(trial)) return NaN;
   } else resetForCollapseExport();
   const a = state.automation;
-  if (shardUpgrades.has("automators2")) {
-    a.overdrive = a.lattice = true;
-    a.overdriveMax = 10;
-    a.latticeMax = shardUpgrades.has("latticeworks") ? 3 : 1;
-  }
+  a.overdrive = shardUpgrades.has("automators2");
+  a.lattice = shardUpgrades.has("autolattice");
+  a.overdriveMax = 10;
+  a.latticeMax = shardUpgrades.has("latticeworks") ? 3 : 1;
   a.collapse = true;
   a.collapseShards = 0;
   const start = state.collapse.count;
@@ -403,10 +422,8 @@ function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): num
       doCollapse();
       return t;
     }
-    if (!shardUpgrades.has("automators2")) {
-      if (state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
-      else if (state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
-    }
+    if (!a.lattice && state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
+    else if (!a.overdrive && state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
     maxAll();
   }
   return Infinity;
@@ -525,7 +542,7 @@ const PROFILES: (Player & { limit: number })[] = [
     ...BASE,
     name: "AFK, automation first",
     ventAt: null,
-    upgradeOrder: ["automators", "automators2", "selfcollapse"],
+    upgradeOrder: ["auto1", "auto2", "auto3", "auto4", "autotempo", "auto5", "auto6", "auto7", "auto8", "bulk", "automators2", "selfcollapse"],
     session: { play: 2 * 60, away: 2 * H - 2 * 60, mode: "closed" },
     limit: 21 * 24 * H,
   },
@@ -539,7 +556,7 @@ function profiles() {
   if (pick === null) console.log("".padEnd(34) + PROFILE_MARKS.map((m) => m.padStart(14)).join("") + "     played");
   PROFILES.forEach((p, i) => {
     if (pick !== null && pick !== i) return;
-    const ms = playthrough(p, 5, p.limit);
+    const ms = playthrough(p, 5, process.env.LIMIT ? Number(process.env.LIMIT) * 3600 : p.limit);
     const extra = ms["Rift 5"] === undefined ? `  (stopped at ${formatTime(ms["(end)"])})` : "";
     console.log(p.name.padEnd(34) + PROFILE_MARKS.map((m) => fmt(ms[m])).join("") + fmt(ms["(played)"]) + extra);
     const trials = TRIALS.filter((d) => ms[`Trial ${d.name}`] !== undefined).map((d) => `${d.name} ${formatTime(ms[`Trial ${d.name}`])}`);
@@ -547,3 +564,32 @@ function profiles() {
   });
 }
 if (mode === "profiles") profiles();
+
+/** The Collapse layer for three cadences: when each upgrade is bought, up to Breach. */
+function breachPacing() {
+  const players: Player[] = [
+    { ...BASE, name: "Active (1s)" },
+    { ...BASE, name: "Hardcore (0.2s)", every: 0.2 },
+    { ...BASE, name: "Relaxed (10s, no venting)", every: 10, ventAt: null },
+  ];
+  const pick = process.argv[3];
+  for (const p of players) {
+    if (pick && !p.name.toLowerCase().startsWith(pick)) continue;
+    let collapsesAtBreach = 0;
+    const ms = playthrough({ ...p, stopAtBreach: true }, 1, 12 * 3600, (name) => {
+      if (name === "Breach") collapsesAtBreach = state.collapse.count;
+    });
+    console.log(`${p.name}: Collapse 1 ${formatTime(ms["Collapse 1"])} · Breach ${ms.Breach === undefined ? "—" : formatTime(ms.Breach)} (Collapse ${collapsesAtBreach})`);
+    const runs = Object.entries(ms).filter(([k]) => k.startsWith("#")).map(([k, v]) => [Number(k.slice(1)), v] as const);
+    const runTimes = runs.map(([n, v], i) => `${n}:${Math.round(v - (i ? runs[i - 1][1] : 0))}s`);
+    if (process.argv.includes("runs")) console.log("  runs " + runTimes.join(" "));
+    const trials = TRIALS.filter((d) => ms[`Trial ${d.name}`] !== undefined).map((d) => `${d.name} ${formatTime(ms[`Trial ${d.name}`])}`);
+    console.log("  Trials: " + trials.join(" · "));
+    const buys = Object.entries(ms)
+      .filter(([k]) => k.startsWith("+"))
+      .sort((a, b) => a[1] - b[1])
+      .map(([k, v]) => `${shardUpgrades.get(k.slice(1)).name} ${formatTime(v)}`);
+    console.log("  " + buys.join(" · ") + "\n");
+  }
+}
+if (mode === "breach") breachPacing();

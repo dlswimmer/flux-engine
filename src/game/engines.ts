@@ -23,7 +23,7 @@ export const MILESTONE_SIZE = 10;
 const MILESTONE_MULT = 2;
 
 /** Units each Engine makes per second before multipliers. A global pacing dial: ×N here ≈ N× faster runs. */
-const BASE_RATE = 2;
+const BASE_RATE = 1.4;
 
 /** Engines unlocked from the start; each Overdrive unlocks one more. */
 const STARTING_ENGINES = 4;

@@ -4,16 +4,20 @@ import { COLLAPSE_HISTORY, state } from "../core/state";
 import { formatMult } from "../core/format";
 import { isHeatUnlocked } from "./heat";
 import { resetForCollapse } from "./reset";
-import { TRIAL_KEEPS, activeTrial, completeActiveTrial } from "./trials";
+import { BREACH_TRIALS, TRIALS_UNLOCK, TRIAL_KEEPS, isTrialsUnlocked, activeTrial, completeActiveTrial, hasTrialReward, trialDef } from "./trials";
 import { riftShardMult } from "./rift";
 import { heatShardMult } from "./heat";
 import { UpgradeSet } from "./upgrades";
 
 /** Momentum stops growing here; uncapped it was worth ×6 on a slow first run. */
 const MOMENTUM_CAP = 3;
+const FLYWHEEL_CAP = 5;
+/** Automate Engine I…VIII. */
+const AUTO_COSTS = [1, 1, 2, 3, 4, 6, 8, 10];
 
 /** Flux can't go past the Horizon until "Breach" is bought; reaching it lets you Collapse. */
 export const HORIZON = D("1e200");
+export const BREACH_COST = 80;
 const HORIZON_LOG = HORIZON.log10().toNumber();
 
 export const shardUpgrades = new UpgradeSet(
@@ -30,7 +34,10 @@ export const shardUpgrades = new UpgradeSet(
       name: "Momentum",
       desc: "Engines gain a bonus that grows with time spent in this Collapse (max ×3).",
       cost: 1,
-      effect: () => D(Math.min(MOMENTUM_CAP, 1 + Math.sqrt(state.collapse.time / 60))),
+      effect: () =>
+        shardUpgrades.has("flywheel")
+          ? D(Math.min(FLYWHEEL_CAP, 1 + Math.sqrt(state.collapse.time / 30)))
+          : D(Math.min(MOMENTUM_CAP, 1 + Math.sqrt(state.collapse.time / 60))),
       effectText: (v) => formatMult(v),
     },
     {
@@ -38,14 +45,8 @@ export const shardUpgrades = new UpgradeSet(
       name: "Echo",
       desc: "All Engines gain a bonus based on Collapses this Rift.",
       cost: 1,
-      effect: () => D(state.collapse.count + 1).pow(0.4),
+      effect: () => D(state.collapse.count + 1).pow(shardUpgrades.has("deepecho") ? 0.55 : 0.4),
       effectText: (v) => formatMult(v),
-    },
-    {
-      id: "automators",
-      name: "Automators",
-      desc: "Unlock autobuyers for every Engine and for Tempo. They start slow and get faster with every Collapse (the ramp restarts each Rift).",
-      cost: 1,
     },
     {
       id: "ignition",
@@ -73,67 +74,178 @@ export const shardUpgrades = new UpgradeSet(
       id: "cascade",
       name: "Cascade",
       desc: "Each Engine gets +2% output per purchase of the Engine above it.",
-      cost: 3,
+      cost: 4,
     },
     {
       id: "exchanger",
       name: "Heat Exchanger",
       desc: "Surges last 50% longer and peak at ×5 instead of ×4.",
-      cost: 3,
+      cost: 4,
       unlocked: () => isHeatUnlocked(),
     },
     {
       id: "resonance",
       name: "Resonance",
       desc: "Each Overdrive gives ×2.25 instead of ×2.",
-      cost: 3,
-    },
-    {
-      id: "automators2",
-      name: "Foreman",
-      desc: "Unlock autobuyers for Overdrive and Lattice.",
       cost: 4,
-      requires: ["automators"],
     },
     {
-      id: "selfcollapse",
-      name: "Self-Collapse",
-      desc: "Unlock auto-Collapse (Automation tab): Collapse by itself once it's worth enough Shards.",
-      cost: 6,
-      requires: ["automators2"],
+      id: "auto1",
+      name: "Automate Engine I",
+      desc: "An autobuyer for Engine I. It buys one at a time until you have Bulk Buying.",
+      cost: AUTO_COSTS[0],
+      group: "automation",
+    },
+    {
+      id: "auto2",
+      name: "Automate Engine II",
+      desc: "An autobuyer for Engine II.",
+      cost: AUTO_COSTS[1],
+      group: "automation",
+      requires: ["auto1"],
+    },
+    {
+      id: "auto3",
+      name: "Automate Engine III",
+      desc: "An autobuyer for Engine III.",
+      cost: AUTO_COSTS[2],
+      group: "automation",
+      requires: ["auto2"],
+    },
+    {
+      id: "auto4",
+      name: "Automate Engine IV",
+      desc: "An autobuyer for Engine IV.",
+      cost: AUTO_COSTS[3],
+      group: "automation",
+      requires: ["auto3"],
+    },
+    {
+      id: "auto5",
+      name: "Automate Engine V",
+      desc: "An autobuyer for Engine V.",
+      cost: AUTO_COSTS[4],
+      group: "automation",
+      requires: ["auto4"],
+    },
+    {
+      id: "auto6",
+      name: "Automate Engine VI",
+      desc: "An autobuyer for Engine VI.",
+      cost: AUTO_COSTS[5],
+      group: "automation",
+      requires: ["auto5"],
+    },
+    {
+      id: "auto7",
+      name: "Automate Engine VII",
+      desc: "An autobuyer for Engine VII.",
+      cost: AUTO_COSTS[6],
+      group: "automation",
+      requires: ["auto6"],
+    },
+    {
+      id: "auto8",
+      name: "Automate Engine VIII",
+      desc: "An autobuyer for Engine VIII.",
+      cost: AUTO_COSTS[7],
+      group: "automation",
+      requires: ["auto7"],
+    },
+    {
+      id: "autotempo",
+      name: "Automate Tempo",
+      desc: "An autobuyer for Tempo.",
+      cost: 2,
+      group: "automation",
+      requires: ["auto1"],
+    },
+    {
+      id: "bulk",
+      name: "Bulk Buying",
+      desc: "Engine and Tempo autobuyers buy as many as you can afford, not one at a time.",
+      cost: 10,
+      group: "automation",
+      requires: ["auto1"],
     },
     {
       id: "overclock",
       name: "Overclock",
       desc: "Autobuyers act 3× as often.",
-      cost: 3,
-      requires: ["automators"],
+      cost: 12,
+      group: "automation",
+      requires: ["auto1"],
+    },
+    {
+      id: "automators2",
+      name: "Foreman",
+      desc: "Unlock the Overdrive autobuyer.",
+      cost: 12,
+      group: "automation",
+      requires: ["auto1"],
+    },
+    {
+      id: "autolattice",
+      name: "Lattice Foreman",
+      desc: "Unlock the Lattice autobuyer.",
+      cost: 12,
+      group: "automation",
+      requires: ["automators2"],
+    },
+    {
+      id: "selfcollapse",
+      name: "Self-Collapse",
+      desc: "Unlock auto-Collapse (Automation tab): Collapse by itself once it's worth enough Shards.",
+      cost: 15,
+      group: "automation",
+      requires: ["automators2"],
     },
     {
       id: "thermostat",
       name: "Thermostat",
       desc: "Automatically vent when Heat reaches a level you choose.",
-      cost: 4,
+      cost: 5,
+      group: "automation",
       unlocked: () => isHeatUnlocked(),
     },
     {
       id: "latticeworks",
       name: "Latticeworks",
       desc: "Lattices keep up to 4 Overdrives (Engines V–VIII stay unlocked) and need 15 fewer Engine VIII.",
-      cost: 5,
+      cost: 10,
+    },
+    {
+      id: "deepecho",
+      name: "Deep Echo",
+      desc: "Echo grows faster with Collapses (exponent 0.55 instead of 0.4).",
+      cost: 20,
+      requires: ["echo"],
+    },
+    {
+      id: "flywheel",
+      name: "Flywheel",
+      desc: "Momentum builds twice as fast and caps at ×5.",
+      cost: 15,
+      requires: ["momentum"],
     },
     {
       id: "prism",
       name: "Prism",
       desc: "Gain 2× Shards from Collapsing.",
-      cost: 3,
+      cost: 5,
     },
     {
       id: "breach",
       name: "Breach",
       desc: "Flux can pass the Horizon (growth slows the further past it you go), and Shard gain scales with your peak Flux.",
-      cost: 12,
+      cost: BREACH_COST,
       requires: ["prism"],
+      gate: () => {
+        const missing = BREACH_TRIALS.filter((id) => !hasTrialReward(id));
+        if (!missing.length) return null;
+        const where = isTrialsUnlocked() ? "Trials tab" : `Trials open at ${TRIALS_UNLOCK} Collapses`;
+        return `Win the ${listNames(missing.map((id) => trialDef(id).name))} Trials first (${where}).`;
+      },
     },
   ],
   () => state.collapse.upgrades,
@@ -141,6 +253,9 @@ export const shardUpgrades = new UpgradeSet(
   // In a Trial only the automation upgrades work: every Trial is a raw Collapse plus its rule.
   (id) => activeTrial() !== null && !TRIAL_KEEPS.includes(id),
 );
+
+const listNames = (names: string[]) =>
+  names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 export const isBreached = () => shardUpgrades.has("breach");
 

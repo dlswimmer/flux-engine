@@ -2,7 +2,7 @@ import { hasTrialReward } from "../game/trials";
 import { format, formatInt, formatMult, formatTime } from "../core/format";
 import type { Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
-import { hasEngineAutobuyers, hasResetAutobuyers } from "../game/automation";
+import { hasLatticeAutobuyer, hasOverdriveAutobuyer, isEngineAutomated, isTempoAutomated } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
 import {
   ENGINE_NAMES,
@@ -144,11 +144,11 @@ function engineRow(tier: number): View {
         setText(buyOne, "Locked");
         setDisabled(buyOne, true);
         setClass(buyMax, "dim", true);
-        setVisible(buttons, !(hasEngineAutobuyers() && state.automation.engines[tier]));
+        setVisible(buttons, !(isEngineAutomated(tier)));
         return;
       }
       const engine = state.engines[tier];
-      const automated = hasEngineAutobuyers() && state.automation.engines[tier];
+      const automated = isEngineAutomated(tier);
       setText(mult, formatMult(engineMult(tier)));
       // An automated Engine nobody has bought yet: say when the autobuyer will pick it up.
       const pending = automated && engine.bought === 0;
@@ -211,7 +211,7 @@ function tempoPanel(): View {
         info,
         `Tempo ${state.tempo} · ${formatMult(tempoFactor(), 3)} per level · total ${formatMult(tempoMult())}`,
       );
-      const automated = hasEngineAutobuyers() && state.automation.tempo;
+      const automated = isTempoAutomated();
       setClass(root, "automated", automated);
       setVisible(badge, automated);
       setVisible(buttons, !automated);
@@ -294,6 +294,7 @@ function resetPanel(
   can: () => boolean,
   act: () => boolean,
   buttonText: () => string,
+  /** Has this reset's autobuyer and it's switched on. */
   automated: () => boolean,
 ): View {
   const desc = h("p", {});
@@ -306,7 +307,7 @@ function resetPanel(
       setText(desc, describe());
       setText(button, buttonText());
       setDisabled(button, !can());
-      setVisible(badge, hasResetAutobuyers() && automated());
+      setVisible(badge, automated());
     },
   };
 }
@@ -341,7 +342,7 @@ export function enginesTab(): View {
       const { tier, amount } = overdriveRequirement();
       return `Overdrive · needs ${amount} Engine ${ENGINE_NAMES[tier]}`;
     },
-    () => state.automation.overdrive,
+    () => hasOverdriveAutobuyer() && state.automation.overdrive,
   );
 
   const lattice = resetPanel(
@@ -363,7 +364,7 @@ export function enginesTab(): View {
       latticesAvailable() > 1
         ? `Form ${latticesAvailable()} Lattices · one more at ${formatInt(nextLatticeRequirement())} Engine VIII`
         : `Form Lattice · needs ${formatInt(latticeRequirement())} Engine VIII`,
-    () => state.automation.lattice,
+    () => hasLatticeAutobuyer() && state.automation.lattice,
   );
 
   const views = [tempo, heat, ...rows, overdrive, lattice];
@@ -384,7 +385,7 @@ export function enginesTab(): View {
       updateShownEngineRows();
       // Buy mode only affects the per-Engine buttons, which automated rows hide.
       const anyManualEngine = Array.from({ length: ENGINE_COUNT }, (_, tier) => tier).some(
-        (tier) => tier < shownEngineRows && !(hasEngineAutobuyers() && state.automation.engines[tier]),
+        (tier) => tier < shownEngineRows && !(isEngineAutomated(tier)),
       );
       setVisible(buyMode, anyManualEngine);
       setText(buyMode, (state.ui.buyMode === "next" ? "Buy mode: Until ×2" : "Buy mode: 1") + keyHint("B"));

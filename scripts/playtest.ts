@@ -142,7 +142,7 @@ function cadence() {
       const { time } = bestRun({ every, ventAt: 75 });
       console.log(`  act every ${pad(every + "s", 6)} ${t(time)}${every === 0.05 ? "   (holding M)" : ""}`);
     }
-    if (owned.includes("automators")) {
+    if (owned.includes("auto1")) {
       for (const every of [1, 30]) {
         replaceState(deserialize(save));
         const { time } = bestRun({ every, ventAt: 75, noManualBuy: true });
@@ -246,7 +246,7 @@ function automation() {
   for (const n of checkpoints) {
     const save = states[n - 1];
     replaceState(deserialize(save));
-    if (!shardUpgrades.has("automators")) continue;
+    if (!shardUpgrades.has("auto1")) continue;
     const interval = autobuyInterval();
     const run = (p: Omit<Play, "maxOverdrives" | "maxLattices">) => {
       replaceState(deserialize(save));
