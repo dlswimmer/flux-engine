@@ -79,7 +79,7 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 
   | Trial | Rule | Reward | Time (1s bot) |
   | --- | --- | --- | --- |
-  | Rigid Frame | at most 1 Lattice, needing 2× the Engine VIII (0 was impossible even after Rift 3; 1 at normal cost was how players ran anyway, 2026-11-11) | Lattices keep all Overdrives | ~25 min (1s bot: won 3h07m, Breach 4h21m) |
+  | Rigid Frame | at most 1 Lattice, needing 2× the Engine VIII (0 was impossible even after Rift 3; 1 at normal cost was how players ran anyway, 2026-11-11) | Lattices keep all Overdrives | ~25 min (1s bot: won 3h07m, Breach 4h21m; 4h30m once Surges end on Collapse) |
   | Overload | at most 6 Overdrives | Overdrives 5-10 reset nothing | ~12 min |
   | Cold Running | Heat 3× faster, no venting, overheating slows every Engine to ×0.6 | Surges 50% longer | ~17 min |
   | Fixed Tempo | Tempo stops at 170 (150 never; 185 ~7 min) | Tempo ×7/level instead of ×8 (×4096 past the Horizon unchanged) | ~15 min (43 min before Foreman) |
@@ -231,3 +231,5 @@ scripts/sim.ts        pacing simulator / strategy sweep
 - Campaign: Collapse 5 at ~48m, runs ~1 min by Collapse 20, Breach at Collapse 35 (~1h30m).
 - Cadence (`npm run playtest -- cadence`), Collapse 10 / 20: holding M 1m6s / 28s, Max All every 1s 2m27s / 1m3s, autobuyers only 3m8s / 1m28s. Holding M beats the 1s autobuyers 2–3×, so automation needs a progression that eventually catches up.
 - Known soft spots: Lattice is skipped from ~Collapse 11 until Latticeworks; a ~1 min/run plateau from Collapse 20 to Breach (auto-Collapse and Trials should fill it); a 2nd Lattice in the first run is ~30% slower than stopping at 1.
+
+- **Surges end on Collapse before Breach (2026-11-11).** A 15s Surge against 10–20s runs made Collapse times depend on whether a run started inside one. After Breach they still carry over (~2s runs, Surges pay in Shards). 1s bot: Breach 4h21m → 4h30m.
