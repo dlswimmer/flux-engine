@@ -96,8 +96,25 @@ export function holdToRepeat(
     }
     timeout = window.setTimeout(() => (interval = window.setInterval(action, every)), delay);
   });
-  // pointercancel fires when a touch turns into a scroll, so scrolling never auto-buys.
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) button.addEventListener(type, stop);
+  // pointercancel fires when a touch turns into a scroll, so scrolling never auto-buys. Not
+  // "blur": a second finger tapping another button moves focus and used to end the hold.
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) button.addEventListener(type, stop);
   document.addEventListener("visibilitychange", stop);
   button.addEventListener("contextmenu", (e) => e.preventDefault());
+}
+
+/**
+ * Act the moment a finger (or mouse button) goes down, for the phone thumb bar. Mobile browsers
+ * don't send a click for a second finger while another is still down, so with only onClick,
+ * Vent/Overdrive/Lattice did nothing while a thumb held Max All. Keyboard activation (Enter or
+ * Space, a click with detail 0) still works through click.
+ */
+export function onPress(button: HTMLButtonElement, action: () => unknown) {
+  button.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || button.disabled) return;
+    action();
+  });
+  button.addEventListener("click", (e) => {
+    if (e.detail === 0) action();
+  });
 }
