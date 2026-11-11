@@ -1,6 +1,6 @@
 import { D } from "../lib/decimal";
 import { defaultEngines, state } from "../core/state";
-import { shardUpgrades } from "./collapse";
+import { isBreached, shardUpgrades } from "./collapse";
 import { resetHeat } from "./heat";
 import { hasNode, keptShardUpgrades } from "./rift";
 import { hasTrialReward } from "./trials";
@@ -45,6 +45,9 @@ export function resetForCollapse() {
   state.collapse.peakFlux = D(0);
   state.collapse.peakShards = D(0);
   // Heat carries over: after Breach the best runs last ~2s, and Heat (8s to build) never mattered.
+  // Before Breach a Surge doesn't: it lasts 15s against 10-20s runs, so a run that started inside
+  // one was faster by luck. After Breach Surges span many ~2s runs and pay in Shards, so they stay.
+  if (!isBreached()) state.heat.surgeTime = 0;
 }
 
 // ---------- Test tools (Options → Dev, shown with ?dev) ----------
