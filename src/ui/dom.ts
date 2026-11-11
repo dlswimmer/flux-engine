@@ -66,8 +66,18 @@ export const keyHint = (key: string) => (isTouch() ? "" : ` (${key})`);
 /**
  * Press and hold to repeat `action` (the stand-in for holding a hotkey on touch
  * screens). A normal tap still goes through the button's own click handler.
+ *
+ * The pointer is captured, so a thumb drifting a little off the button keeps the hold going
+ * (it used to stop on pointerleave). `noScroll` (the fixed action bar) also turns off panning on
+ * the button: otherwise the browser can decide a slightly moving hold is a scroll, cancel it and
+ * scroll the page. Buttons inside scrolling lists keep panning, so a swipe that starts on one
+ * still scrolls (and cancels the hold, so scrolling never auto-buys).
  */
-export function holdToRepeat(button: HTMLElement, action: () => unknown, delay = 350, every = 50) {
+export function holdToRepeat(
+  button: HTMLElement,
+  action: () => unknown,
+  { delay = 350, every = 50, noScroll = false }: { delay?: number; every?: number; noScroll?: boolean } = {},
+) {
   let timeout: number | undefined;
   let interval: number | undefined;
   const stop = () => {
@@ -75,12 +85,19 @@ export function holdToRepeat(button: HTMLElement, action: () => unknown, delay =
     clearInterval(interval);
     timeout = interval = undefined;
   };
+  if (noScroll) button.classList.add("hold-button");
   button.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     stop();
+    try {
+      button.setPointerCapture(e.pointerId);
+    } catch {
+      // Not capturable (synthetic event): the hold still works, it just stops on leave.
+    }
     timeout = window.setTimeout(() => (interval = window.setInterval(action, every)), delay);
   });
   // pointercancel fires when a touch turns into a scroll, so scrolling never auto-buys.
-  for (const type of ["pointerup", "pointerleave", "pointercancel", "blur"]) button.addEventListener(type, stop);
+  for (const type of ["pointerup", "pointercancel", "lostpointercapture", "blur"]) button.addEventListener(type, stop);
+  document.addEventListener("visibilitychange", stop);
   button.addEventListener("contextmenu", (e) => e.preventDefault());
 }

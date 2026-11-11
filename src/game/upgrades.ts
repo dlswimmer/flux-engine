@@ -1,3 +1,4 @@
+import { emit } from "../core/events";
 import { D, Decimal, type DecimalSource } from "../lib/decimal";
 
 export interface UpgradeDef {
@@ -79,6 +80,7 @@ export class UpgradeSet {
     this.currency.set(this.currency.get().sub(this.get(id).cost));
     this.owned().push(id);
     this.get(id).onBuy?.();
+    emit("upgrade", id);
     return true;
   }
 

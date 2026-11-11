@@ -562,3 +562,17 @@ textarea {
   .toasts { left: 12px; right: 12px; bottom: calc(140px + env(safe-area-inset-bottom)); }
 }
 .upgrade.suppressed { opacity: 0.5; }
+
+/* Time-away prompt */
+.away-overlay {
+  position: fixed; inset: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(0, 0, 0, 0.6);
+}
+.away-box { max-width: 420px; width: 100%; }
+.away-box .away-warn { color: var(--shard, #e8a33c); }
+
+/* Hold-to-repeat buttons in fixed bars: the browser never turns a hold into a scroll or zoom. */
+.hold-button { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* The thumb bar itself never scrolls or rubber-bands the page. */
+.action-bar { touch-action: none; overscroll-behavior: contain; }
