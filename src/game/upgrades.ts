@@ -8,8 +8,12 @@ export interface UpgradeDef {
   /** Current effect value, shown in the UI and read by game code. */
   effect?: () => Decimal;
   effectText?: (value: Decimal) => string;
+  /** Shown under its own heading (the Collapse tab splits power and automation). */
+  group?: "automation";
   /** Upgrades that must be owned before this one can be bought. */
   requires?: string[];
+  /** Shown but unbuyable while this returns a reason (e.g. "Win the Rigid Frame Trial"). */
+  gate?: () => string | null;
   /** Hidden and unbuyable until this returns true (e.g. its mechanic isn't unlocked yet). */
   unlocked?: () => boolean;
   /** Runs once when bought, e.g. to apply a "start with X" upgrade to the current run too. */
@@ -63,7 +67,7 @@ export class UpgradeSet {
   }
 
   isAvailable(id: string): boolean {
-    return this.isVisible(id) && (this.get(id).requires ?? []).every((r) => this.owns(r));
+    return this.isVisible(id) && (this.get(id).requires ?? []).every((r) => this.owns(r)) && !this.get(id).gate?.();
   }
 
   canBuy(id: string): boolean {

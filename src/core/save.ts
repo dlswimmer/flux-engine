@@ -7,7 +7,21 @@ const AUTOSAVE_MS = 15_000;
 
 // Each entry upgrades a raw save from (version - 1) to `version`, in place.
 // Example: 2: (raw) => { raw.collapse.upgrades = raw.collapse.ups ?? []; },
-const MIGRATIONS: Record<number, (raw: any) => void> = {};
+const MIGRATIONS: Record<number, (raw: any) => void> = {
+  // Automators (every Engine and Tempo autobuyer, buying max) split into one unlock per
+  // Engine, Tempo and Bulk Buying; Foreman (Overdrive + Lattice) into Foreman and Lattice Foreman.
+  2: (raw) => {
+    const ups: string[] | undefined = raw?.collapse?.upgrades;
+    if (!Array.isArray(ups)) return;
+    const add = (ids: string[]) => ids.forEach((id) => ups.includes(id) || ups.push(id));
+    const i = ups.indexOf("automators");
+    if (i >= 0) {
+      ups.splice(i, 1);
+      add(["auto1", "auto2", "auto3", "auto4", "auto5", "auto6", "auto7", "auto8", "autotempo", "bulk"]);
+    }
+    if (ups.includes("automators2")) add(["autolattice"]);
+  },
+};
 
 export function serialize(s: GameState): string {
   // Decimal defines toJSON, so the replacer has to look at the holder's raw value.

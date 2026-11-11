@@ -3,12 +3,14 @@ import {
   MIN_INTERVAL,
   autobuyInterval,
   hasAutoCollapse,
+  hasBulkBuying,
   hasEngineAutobuyers,
   areResetsPaused,
   hasResetAutobuyers,
   nextAutobuyInterval,
 } from "../game/automation";
 import { shardUpgrades } from "../game/collapse";
+import { ENGINE_AUTOBUYER_IDS, TEMPO_AUTOBUYER_ID } from "../game/automationIds";
 import { ENGINE_NAMES, isEngineUnlocked } from "../game/engines";
 import { HEAT_MAX, hasThermostat, isHeatUnlocked } from "../game/heat";
 import { isTempoUnlocked } from "../game/tempo";
@@ -30,6 +32,8 @@ interface CardOptions {
   settings?: HTMLElement;
   /** Take a full row (long notes). Cards with settings always do. */
   wide?: boolean;
+  /** Not bought yet: why (shown instead of the note), and the switch is disabled. */
+  locked?: () => string | null;
 }
 
 function autobuyerCard(o: CardOptions): View {
@@ -44,10 +48,12 @@ function autobuyerCard(o: CardOptions): View {
   return {
     root,
     update() {
+      const lock = o.locked?.() ?? null;
       if (input.checked !== o.get()) input.checked = o.get();
-      setText(note, o.note?.() ?? "");
-      setClass(root, "on", o.get());
-      setClass(root, "idle", o.idle?.() ?? false);
+      input.disabled = lock !== null;
+      setText(note, lock ?? o.note?.() ?? "");
+      setClass(root, "on", lock === null && o.get());
+      setClass(root, "idle", lock !== null || (o.idle?.() ?? false));
     },
   };
 }
@@ -120,6 +126,8 @@ function waitSetting(get: () => number, set: (v: number) => void) {
 
 const lockedUntil = (id: string) => () =>
   shardUpgrades.owns(id) ? null : `Buy ${shardUpgrades.get(id).name} (${shardUpgrades.get(id).cost} Shards) to unlock.`;
+/** Short per-card version: "buy for 4 Shards". */
+const cardLock = (id: string) => () => (shardUpgrades.owns(id) ? null : `buy ${shardUpgrades.get(id).name} (${shardUpgrades.get(id).cost} Shards)`);
 
 export function automationTab(): View {
   const speed = h("p", { class: "auto-speed-line" });
@@ -131,6 +139,7 @@ export function automationTab(): View {
       set: (v) => (state.automation.engines[tier] = v),
       idle: () => !isEngineUnlocked(tier),
       note: () => (isEngineUnlocked(tier) ? "" : "not unlocked yet"),
+      locked: cardLock(ENGINE_AUTOBUYER_IDS[tier]),
     }),
   );
   const tempoCard = autobuyerCard({
@@ -138,6 +147,7 @@ export function automationTab(): View {
     get: () => state.automation.tempo,
     set: (v) => (state.automation.tempo = v),
     idle: () => !isTempoUnlocked(),
+    locked: cardLock(TEMPO_AUTOBUYER_ID),
   });
   const setAllBuyers = (on: boolean) => {
     state.automation.engines = state.automation.engines.map(() => on);
@@ -149,7 +159,7 @@ export function automationTab(): View {
     h("button", { class: "secondary", onClick: () => setAllBuyers(true) }, "All on"),
     h("button", { class: "secondary", onClick: () => setAllBuyers(false) }, "All off"),
   );
-  const buyers = group("Engines & Tempo", [tempoCard, ...engineCards], lockedUntil("automators"), allButtons);
+  const buyers = group("Engines & Tempo", [tempoCard, ...engineCards], lockedUntil("auto1"), allButtons);
 
   const overdriveLimit = limitSetting(
     "Stop at",
@@ -184,6 +194,7 @@ export function automationTab(): View {
       }),
       autobuyerCard({
         name: "Lattice",
+        locked: cardLock("autolattice"),
         get: () => state.automation.lattice,
         set: (v) => (state.automation.lattice = v),
         note: () =>
@@ -265,7 +276,8 @@ export function automationTab(): View {
         (now <= MIN_INTERVAL
           ? `Autobuyers act every tick (${now.toFixed(2)}s), the fastest possible.`
           : `Autobuyers act every ${now.toFixed(2)}s, ${nextAutobuyInterval().toFixed(2)}s after your next Collapse.`) +
-          (shardUpgrades.has("overclock") ? " Overclocked ×3." : ""),
+          (shardUpgrades.has("overclock") ? " Overclocked ×3." : "") +
+          (hasBulkBuying() ? "" : " Each buys one at a time until Bulk Buying."),
       );
       for (const g of groups) g.update();
       setVisible(heat.root, isHeatUnlocked());

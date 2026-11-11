@@ -1,3 +1,4 @@
+import { AUTOMATION_UPGRADES } from "./automationIds";
 import { emit } from "../core/events";
 import { D, Decimal } from "../lib/decimal";
 import { RIFT_HISTORY, state } from "../core/state";
@@ -66,10 +67,10 @@ export const RIFT_MILESTONES: RiftMilestone[] = [
   // Collapse count, it took 8s).
   {
     rifts: 1,
-    text: "Keep Automators, Foreman, Self-Collapse, Overclock and Thermostat.",
-    keeps: ["automators", "automators2", "selfcollapse", "overclock", "thermostat"],
+    text: "Keep every automation upgrade (autobuyers, Bulk Buying, Overclock, Foremen, Self-Collapse, Thermostat).",
+    keeps: AUTOMATION_UPGRADES,
   },
-  { rifts: 2, text: "Keep Kindling, Momentum, Echo, Ignition, Tuning and Gearing.", keeps: ["kindling", "momentum", "echo", "ignition", "tuning", "gearing"] },
+  { rifts: 2, text: "Keep Kindling, Momentum, Echo, Ignition, Tuning, Gearing, Flywheel and Deep Echo.", keeps: ["kindling", "momentum", "echo", "ignition", "tuning", "gearing", "flywheel", "deepecho"] },
   { rifts: 3, text: "Keep Cascade, Heat Exchanger, Resonance and Latticeworks.", keeps: ["cascade", "exchanger", "resonance", "latticeworks"] },
   { rifts: 4, text: "Keep Prism and Breach.", keeps: ["prism", "breach"] },
 ];

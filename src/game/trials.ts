@@ -1,3 +1,4 @@
+import { AUTOMATION_UPGRADES } from "./automationIds";
 import { emit } from "../core/events";
 import { formatTime } from "../core/format";
 import { state } from "../core/state";
@@ -97,10 +98,13 @@ export const TRIALS: TrialDef[] = [
 ];
 
 /** Shard upgrades that still work during a Trial (the rest, and Overcharge, are off). */
-export const TRIAL_KEEPS = ["automators", "automators2", "selfcollapse", "overclock", "thermostat"];
+export const TRIAL_KEEPS = AUTOMATION_UPGRADES;
+
+/** Trials you must win before Breach can be bought (like AD's challenges before Break Infinity). */
+export const BREACH_TRIALS: TrialId[] = ["rigid", "overload", "cold", "fixed"];
 
 /** Lifetime Collapses that open the Trials. */
-export const TRIALS_UNLOCK = 15;
+export const TRIALS_UNLOCK = 60;
 
 export const isTrialsUnlocked = () => totalCollapses() >= TRIALS_UNLOCK || state.trials.completed.length > 0;
 export const activeTrial = () => state.trials.active as TrialId | null;

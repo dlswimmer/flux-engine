@@ -68,7 +68,8 @@ export function upgradeCard(set: UpgradeSet, def: UpgradeDef, currencyName: stri
       setClass(root, "owned", owned);
       setClass(root, "affordable", set.canBuy(def.id));
       setClass(root, "locked", !owned && !set.isAvailable(def.id));
-      setText(effect, def.effect && def.effectText ? `Currently ${def.effectText(def.effect())}` : "");
+      const gate = owned ? null : (def.gate?.() ?? null);
+      setText(effect, gate ?? (def.effect && def.effectText ? `Currently ${def.effectText(def.effect())}` : ""));
       setText(cost, off ? "Owned · off during this Trial" : owned ? "Owned" : `${formatInt(def.cost)} ${currencyName}`);
     },
   };
@@ -78,6 +79,8 @@ export function collapseTab(): View {
   const summary = h("p", { class: "summary" });
   const button = h("button", { class: "collapse-btn wide", onClick: doCollapse });
   const cards = shardUpgrades.defs.map((def) => upgradeCard(shardUpgrades, def, "Shards"));
+  const power = shardUpgrades.defs.flatMap((def, i) => (def.group === "automation" ? [] : [cards[i].root]));
+  const automation = shardUpgrades.defs.flatMap((def, i) => (def.group === "automation" ? [cards[i].root] : []));
   const overcharge = overchargePanel();
 
   const root = h(
@@ -87,7 +90,9 @@ export function collapseTab(): View {
     button,
     overcharge.root,
     h("h3", {}, "Shard upgrades"),
-    h("div", { class: "upgrade-grid" }, ...cards.map((c) => c.root)),
+    h("div", { class: "upgrade-grid" }, ...power),
+    h("h3", {}, "Automation"),
+    h("div", { class: "upgrade-grid" }, ...automation),
   );
 
   return {

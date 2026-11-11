@@ -1,14 +1,30 @@
 import { ENGINE_COUNT, state } from "../core/state";
 import { canCollapse, doCollapse, exactShardGain, isBreached, shardGain, shardUpgrades } from "./collapse";
 import { hasNode } from "./rift";
-import { buyMaxEngine } from "./engines";
+import { buyEngine, buyMaxEngine } from "./engines";
+import { ENGINE_AUTOBUYER_IDS, TEMPO_AUTOBUYER_ID } from "./automationIds";
 import { canLattice, doLattice, latticeResetsNothing } from "./lattice";
 import { UNLOCK_PHASE, canOverdrive, doOverdrive, overdriveResetsNothing } from "./overdrive";
 import { SPRINT_HEAD_START, hasTrialReward } from "./trials";
-import { buyMaxTempo } from "./tempo";
+import { buyMaxTempo, buyTempo } from "./tempo";
 
-export const hasEngineAutobuyers = () => shardUpgrades.has("automators");
-export const hasResetAutobuyers = () => shardUpgrades.has("automators2");
+/** Each Engine and Tempo has its own autobuyer unlock. */
+export const hasEngineAutobuyer = (tier: number) => shardUpgrades.has(ENGINE_AUTOBUYER_IDS[tier]);
+export const hasTempoAutobuyer = () => shardUpgrades.has(TEMPO_AUTOBUYER_ID);
+/** At least one Engine or Tempo autobuyer. */
+export const hasEngineAutobuyers = () => hasEngineAutobuyer(0);
+/** Bulk Buying: autobuyers buy max; without it, one purchase per activation. */
+export const hasBulkBuying = () => shardUpgrades.has("bulk");
+/**
+ * The Engines tab treats a row as automated (hides its buy buttons) only once the autobuyer
+ * buys max: before Bulk Buying it buys one at a time and the player still wants the buttons.
+ */
+export const isEngineAutomated = (tier: number) =>
+  hasEngineAutobuyer(tier) && hasBulkBuying() && state.automation.engines[tier];
+export const isTempoAutomated = () => hasTempoAutobuyer() && hasBulkBuying() && state.automation.tempo;
+export const hasOverdriveAutobuyer = () => shardUpgrades.has("automators2");
+export const hasLatticeAutobuyer = () => shardUpgrades.has("autolattice");
+export const hasResetAutobuyers = () => hasOverdriveAutobuyer() || hasLatticeAutobuyer();
 export const hasAutoCollapse = () => shardUpgrades.has("selfcollapse");
 
 // Autobuyers are balanced against a player holding M, which is 2–3× faster than
@@ -96,12 +112,11 @@ export function runAutomation(dt: number) {
   // Keep the remainder so the average rate is right, but never bank more than one extra activation.
   timer = Math.min(timer - interval, interval);
   const auto = state.automation;
-  if (hasEngineAutobuyers()) {
-    // Tempo first, like Max All: it boosts every tier.
-    if (auto.tempo) buyMaxTempo();
-    for (let tier = ENGINE_COUNT - 1; tier >= 0; tier--) {
-      if (auto.engines[tier]) buyMaxEngine(tier);
-    }
+  const bulk = hasBulkBuying();
+  // Tempo first, like Max All: it boosts every tier.
+  if (auto.tempo && hasTempoAutobuyer()) bulk ? buyMaxTempo() : buyTempo();
+  for (let tier = ENGINE_COUNT - 1; tier >= 0; tier--) {
+    if (auto.engines[tier] && hasEngineAutobuyer(tier)) bulk ? buyMaxEngine(tier) : buyEngine(tier);
   }
   if (hasResetAutobuyers()) runResetAutobuyers();
 }
@@ -109,17 +124,19 @@ export function runAutomation(dt: number) {
 function runResetAutobuyers() {
   const auto = state.automation;
   // Claims that reset nothing (Trial rewards) are always worth it: no Stop-at, wait or pause.
-  if (auto.lattice && latticeResetsNothing() && canLattice()) doLattice();
-  if (auto.overdrive && overdriveResetsNothing() && canOverdrive()) doOverdrive();
+  const lattice = auto.lattice && hasLatticeAutobuyer();
+  const overdrive = auto.overdrive && hasOverdriveAutobuyer();
+  if (lattice && latticeResetsNothing() && canLattice()) doLattice();
+  if (overdrive && overdriveResetsNothing() && canOverdrive()) doOverdrive();
   if (areResetsPaused()) return;
   // Each claims as many as the Engines cover, up to the Stop-at limit. A Lattice that is
   // only waiting out its timer holds Overdrives back: one would reset the Engine VIII it needs.
   const latticeWanted =
-    auto.lattice && !latticeResetsNothing() && state.lattices < auto.latticeMax && canLattice();
+    lattice && !latticeResetsNothing() && state.lattices < auto.latticeMax && canLattice();
   if (latticeWanted) {
     if (waited(auto.latticeWait)) doLattice(auto.latticeMax - state.lattices);
   } else if (
-    auto.overdrive &&
+    overdrive &&
     !overdriveResetsNothing() &&
     state.overdrives < auto.overdriveMax &&
     canOverdrive() &&
