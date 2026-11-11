@@ -102,7 +102,7 @@ function limitSetting(label: string, unit: string, get: () => number, set: (v: n
   };
 }
 
-/** "Wait [N] s into a run" number box. Blank or 0 = claim as soon as possible. */
+/** "At most every [N] s" number box. Blank or 0 = claim as soon as possible. */
 function waitSetting(get: () => number, set: (v: number) => void) {
   const input = h("input", {
     type: "number",
@@ -114,7 +114,7 @@ function waitSetting(get: () => number, set: (v: number) => void) {
       set(Number.isFinite(v) ? Math.min(600, Math.max(0, v)) : 0);
     },
   });
-  const el = h("label", { class: "auto-setting" }, "Wait", input, "s into a run");
+  const el = h("label", { class: "auto-setting" }, "At most every", input, "s");
   return {
     el,
     sync() {
@@ -217,7 +217,7 @@ export function automationTab(): View {
     h(
       "p",
       { class: "auto-hint" },
-      "Each press claims every Overdrive or Lattice your Engines cover. A wait lets a run build up so one reset claims several: " +
+      "Each press claims every Overdrive or Lattice your Engines cover. \"At most every\" spaces the presses out so Engines build up and one reset claims several: " +
         "0 is best early on, 10–20s once runs take a minute or more. The first 4 Overdrives never wait.",
     ),
   );
