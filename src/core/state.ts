@@ -85,6 +85,8 @@ export interface GameState {
     /** Most recent last, at most RIFT_HISTORY. */
     history: RiftRecord[];
     introduced: boolean;
+    /** Attunement levels (repeatable Essence sink, kept through Rifts). */
+    attunement: number;
   };
 
   // Twist: Engines build Heat; venting it trades the heat for a temporary Surge.
@@ -116,6 +118,9 @@ export interface GameState {
     /** Auto-Collapse (Self-Collapse upgrade): Collapse once the next one gives at least this many Shards (0 = as soon as possible). */
     collapse: boolean;
     collapseShards: number;
+    /** Auto-Rift (Perpetual node): Rift once a Rift gives at least riftAt Essence. */
+    rift: boolean;
+    riftAt: number;
   };
 
   /** collapses: lifetime Collapse count (collapse.count is this Rift's; a Rift resets it). */
@@ -172,6 +177,7 @@ export function defaultState(): GameState {
       respec: false,
       history: [],
       introduced: false,
+      attunement: 0,
     },
 
     heat: {
@@ -199,6 +205,8 @@ export function defaultState(): GameState {
       pauseResetsAtHorizon: true,
       collapse: true,
       collapseShards: 0,
+      rift: false,
+      riftAt: 10,
     },
 
     trials: { active: null, completed: [], best: {}, sprintRestarts: 0, meltdowns: 0, introduced: false },

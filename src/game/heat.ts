@@ -1,7 +1,7 @@
 import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
-import { hasNode } from "./rift";
+import { REDLINE_HEAT, hasNode } from "./rift";
 import { COLD_THROTTLE_FLOOR, SURGE_ENGINE_DURATION, hasTrialReward, inTrial } from "./trials";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
@@ -32,10 +32,13 @@ export function updateHeat(dt: number) {
   // A Surge is the vent still open: no Heat builds until it closes. Only the part of
   // this tick after the Surge ends counts (matters for big offline-catch-up ticks).
   // Pressure Valve (Trial): Heat comes only from buying.
-  const heatingTime = inTrial("valve") ? 0 : Math.max(0, dt - heat.surgeTime);
+  // Critical Mass (Rift node): Heat keeps building through a Surge, so you can vent again.
+  const heatingTime = inTrial("valve") ? 0 : hasNode("critical-mass") ? dt : Math.max(0, dt - heat.surgeTime);
   heat.surgeTime = Math.max(0, heat.surgeTime - dt);
   const rate =
-    (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) * (inTrial("cold") ? COLD_HEAT_SPEED : 1);
+    (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) *
+    (hasNode("critical-mass") ? 2 : 1) *
+    (inTrial("cold") ? COLD_HEAT_SPEED : 1);
   // Exact exponential approach, so it stays stable for the big dt of offline catch-up.
   heat.amount += (HEAT_MAX - heat.amount) * (1 - Math.exp(-rate * heatingTime));
   if (hasNode("even-keel")) heat.amount = Math.min(heat.amount, THROTTLE_START);
@@ -66,6 +69,8 @@ export const surgeDuration = () =>
   (hasTrialReward("cold") ? 1.5 : 1) *
   (inTrial("surge") ? SURGE_ENGINE_DURATION : 1);
 export const isSurging = () => state.heat.surgeTime > 0;
+/** Redline (Rift node): this Surge came from venting at REDLINE_HEAT or more. */
+export const isRedlineSurge = () => isSurging() && state.heat.ventedFrom >= REDLINE_HEAT;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 
 /**
@@ -75,6 +80,7 @@ export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
  */
 export function heatShardMult(): number {
   let mult = Math.sqrt(surgeMult());
+  if (hasNode("redline") && isRedlineSurge()) mult *= 2;
   if (hasNode("backdraft")) mult *= Math.sqrt(1 + (3 * displayedHeat()) / 100);
   return mult;
 }
@@ -88,17 +94,24 @@ export function displayedHeat(): number {
   const heat = state.heat;
   // Pressure Valve: buying adds Heat mid-Surge, and that's the number that melts you down.
   if (!isSurging() || inTrial("valve")) return heat.amount;
-  return heat.ventedFrom * Math.min(1, heat.surgeTime / surgeDuration());
+  const draining = heat.ventedFrom * Math.min(1, heat.surgeTime / surgeDuration());
+  // Critical Mass: Heat builds mid-Surge, and once it passes the draining bar that's what you'd vent.
+  return hasNode("critical-mass") ? Math.max(heat.amount, draining) : draining;
 }
 
-/** No venting mid-Surge, so Surges can't be chained into a permanent boost. */
-export const canVent = () => isHeatUnlocked() && !inTrial("cold") && !isSurging() && state.heat.amount >= MIN_VENT;
+/**
+ * No venting mid-Surge, so Surges can't be chained into a permanent boost. Critical Mass allows
+ * it, capped at the strongest single Surge squared.
+ */
+export const canVent = () =>
+  isHeatUnlocked() && !inTrial("cold") && (!isSurging() || hasNode("critical-mass")) && state.heat.amount >= MIN_VENT;
 
 /** Dump all Heat into a fresh Surge. */
 export function vent(): boolean {
   if (!canVent()) return false;
   const heat = state.heat;
-  heat.surgeMult = surgeMultFor(heat.amount);
+  const fresh = surgeMultFor(heat.amount);
+  heat.surgeMult = isSurging() ? Math.min(surgeMax() ** 2, heat.surgeMult * fresh) : fresh;
   heat.ventedFrom = heat.amount;
   heat.surgeTime = surgeDuration();
   heat.amount = 0;

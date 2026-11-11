@@ -1,11 +1,11 @@
 import { ENGINE_COUNT, state } from "../core/state";
-import { canCollapse, doCollapse, exactShardGain, isBreached, shardGain, shardUpgrades } from "./collapse";
-import { hasNode } from "./rift";
+import { buyMaxOvercharge, canCollapse, doCollapse, exactShardGain, isBreached, shardGain, shardUpgrades } from "./collapse";
+import { canRift, doRift, essenceGain, hasNode } from "./rift";
 import { buyEngine, buyMaxEngine } from "./engines";
 import { ENGINE_AUTOBUYER_IDS, TEMPO_AUTOBUYER_ID } from "./automationIds";
 import { canLattice, doLattice, latticeResetsNothing } from "./lattice";
 import { UNLOCK_PHASE, canOverdrive, doOverdrive, overdriveResetsNothing } from "./overdrive";
-import { SPRINT_HEAD_START, hasTrialReward } from "./trials";
+import { SPRINT_HEAD_START, activeTrial, hasTrialReward } from "./trials";
 import { buyMaxTempo, buyTempo } from "./tempo";
 
 /** Each Engine and Tempo has its own autobuyer unlock. */
@@ -107,7 +107,20 @@ const overdriveWaitDone = () => state.overdrives < UNLOCK_PHASE || cooledDown("o
 
 let timer = 0;
 
+/** Perpetual (Rift node): Overcharge buys itself, and the Rift can open on its own. */
+export const hasPerpetual = () => hasNode("perpetual");
+
+function runPerpetual(): boolean {
+  if (!hasPerpetual()) return false;
+  buyMaxOvercharge();
+  const auto = state.automation;
+  // Never mid-Trial: a Rift would throw the attempt away.
+  if (auto.rift && activeTrial() === null && canRift() && essenceGain().gte(Math.max(1, auto.riftAt))) return doRift();
+  return false;
+}
+
 export function runAutomation(dt: number) {
+  if (runPerpetual()) return;
   // Every tick, not on the autobuyer timer: after Breach a run lasts ~2s, so reacting a
   // second late (the timer right after a Rift) wastes half of it.
   if (autoCollapseReady()) {

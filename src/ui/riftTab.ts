@@ -4,11 +4,19 @@ import {
   NODE_INFO,
   RIFT_MILESTONES,
   RIFT_OVERCHARGE,
+  ATTUNEMENT_RIFTS,
+  attunementCost,
+  attunementEngineMult,
+  attunementEssenceMult,
+  buyAttunement,
+  canAttune,
   canRift,
   chosenBranch,
   doRift,
   essenceGain,
+  hasNode,
   hasRiftMilestone,
+  isAttunementUnlocked,
   riftNodes,
   spentEssence,
 } from "../game/rift";
@@ -32,14 +40,19 @@ function nodeCard(def: UpgradeDef): View {
     update() {
       const owned = riftNodes.owns(def.id);
       const branch = NODE_INFO[def.id].branch;
-      const closed = branch !== "core" && chosenBranch() !== null && chosenBranch() !== branch;
+      const closed = branch !== "core" && !riftNodes.isVisible(def.id);
+      const gate = def.gate?.();
       setClass(root, "owned", owned);
       setClass(root, "affordable", riftNodes.canBuy(def.id));
       setClass(root, "locked", !owned && !riftNodes.isAvailable(def.id));
       setText(effect, def.effect && def.effectText ? `Currently ${def.effectText(def.effect())}` : "");
       setText(
         cost,
-        owned ? "Owned" : closed ? `Locked: you chose ${chosenBranch() === "order" ? "Order" : "Entropy"}` : `${formatInt(def.cost)} Essence`,
+        owned
+          ? "Owned"
+          : closed
+            ? `Locked: you chose ${chosenBranch() === "order" ? "Order" : "Entropy"}`
+            : `${formatInt(riftNodes.cost(def.id))} Essence${gate ? ` · ${gate}` : ""}`,
       );
     },
   };
@@ -64,10 +77,46 @@ export function riftTab(): View {
       h("h4", {}, branch === "order" ? "Order · steady, idle-friendly" : "Entropy · volatile, rewards Heat"),
       ...nodes.filter((n) => NODE_INFO[n.def.id].branch === branch).map((n) => n.view.root),
     );
-  const core = h(
+  const coreRow = (from: number, to: number) =>
+    h(
+      "div",
+      { class: "rift-core" },
+      ...nodes
+        .filter((n) => NODE_INFO[n.def.id].branch === "core" && NODE_INFO[n.def.id].row >= from && NODE_INFO[n.def.id].row <= to)
+        .map((n) => n.view.root),
+    );
+  const core = coreRow(0, 1);
+  const coreMid = coreRow(2, 2);
+  const coreEnd = coreRow(7, 7);
+
+  // Attunement: the repeatable sink.
+  const attuneInfo = h("p", { class: "summary" });
+  const attuneBtn = h("button", { class: "wide", onClick: () => buyAttunement() });
+  const attunePanel = h(
     "div",
-    { class: "rift-core" },
-    ...nodes.filter((n) => NODE_INFO[n.def.id].branch === "core").map((n) => n.view.root),
+    { class: "panel" },
+    h("h3", {}, "Attunement"),
+    h("p", {}, "A level you can keep buying with Essence. Each level: every Engine ×2 and +5% Essence from a Rift. Kept through Rifts and respecs."),
+    attuneInfo,
+    attuneBtn,
+  );
+
+  // Perpetual (Order capstone): auto-Rift settings.
+  const autoRift = toggle("Auto-Rift", () => state.automation.rift, (v) => (state.automation.rift = v));
+  const riftAtInput = h("input", {
+    type: "number",
+    min: 1,
+    step: 1,
+    onChange: () => {
+      const v = Math.floor(Number(riftAtInput.value));
+      state.automation.riftAt = Number.isFinite(v) ? Math.max(1, v) : 10;
+    },
+  });
+  const perpetualPanel = h(
+    "div",
+    { class: "rift-respec" },
+    autoRift.root,
+    h("label", { class: "auto-setting" }, "when it gives at least", riftAtInput, "Essence"),
   );
   const branchNote = h("p", { class: "rift-branch-note" });
   const respec = toggle("Respec at next Rift", () => state.rift.respec, (v) => (state.rift.respec = v));
@@ -86,10 +135,14 @@ export function riftTab(): View {
       { class: "panel" },
       h("h3", {}, "Rift tree"),
       core,
+      coreMid,
       branchNote,
       h("div", { class: "rift-branches" }, column("order"), column("entropy")),
+      coreEnd,
+      perpetualPanel,
       h("div", { class: "rift-respec" }, respec.root, respecNote),
     ),
+    attunePanel,
   );
 
   return {
@@ -106,7 +159,7 @@ export function riftTab(): View {
       fill.style.width = `${Math.min(100, (oc / RIFT_OVERCHARGE) * 100)}%`;
       setText(
         progressLabel,
-        canRift() ? `Open · each 4 more Overcharge: +3 Essence` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
+        canRift() ? `Open · each 4 more Overcharge: +3 Essence` + (r.attunement ? ` (×${attunementEssenceMult().toFixed(2)})` : "") : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
       );
       setText(
         button,
@@ -126,6 +179,19 @@ export function riftTab(): View {
           : `You chose ${branch === "order" ? "Order" : "Entropy"}.`,
       );
       respec.update();
+      autoRift.update();
+      setVisible(perpetualPanel, hasNode("perpetual"));
+      if (document.activeElement !== riftAtInput) riftAtInput.value = String(state.automation.riftAt);
+      setVisible(attunePanel, isAttunementUnlocked() || r.count >= ATTUNEMENT_RIFTS - 1);
+      setText(
+        attuneInfo,
+        `Level ${r.attunement} · Engines ×${formatInt(attunementEngineMult())} · Essence ×${attunementEssenceMult().toFixed(2)}`,
+      );
+      setText(
+        attuneBtn,
+        isAttunementUnlocked() ? `Attune for ${formatInt(attunementCost())} Essence` : `Opens at Rift ${ATTUNEMENT_RIFTS}`,
+      );
+      setDisabled(attuneBtn, !canAttune());
       setText(respecNote, r.nodes.length ? `refunds ${formatInt(spentEssence())} Essence` : "");
       setVisible(respec.root.parentElement!, r.nodes.length > 0 || r.respec);
     },

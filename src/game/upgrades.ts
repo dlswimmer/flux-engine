@@ -39,6 +39,8 @@ export class UpgradeSet {
     private currency: Currency,
     /** Owned but switched off right now (e.g. during a Trial): has() is false, owns() stays true. */
     private suppressed: (id: string) => boolean = () => false,
+    /** Price right now, when it can differ from def.cost (Crossover's 2× second branch). */
+    private price: (def: UpgradeDef) => DecimalSource = (def) => def.cost,
   ) {
     this.byId = new Map(defs.map((d) => [d.id, d]));
   }
@@ -59,6 +61,11 @@ export class UpgradeSet {
     return this.owns(id) && !this.suppressed(id);
   }
 
+  /** What it costs right now. */
+  cost(id: string): Decimal {
+    return D(this.price(this.get(id)));
+  }
+
   isSuppressed(id: string): boolean {
     return this.owns(id) && this.suppressed(id);
   }
@@ -72,12 +79,12 @@ export class UpgradeSet {
   }
 
   canBuy(id: string): boolean {
-    return !this.owns(id) && this.isAvailable(id) && this.currency.get().gte(this.get(id).cost);
+    return !this.owns(id) && this.isAvailable(id) && this.currency.get().gte(this.cost(id));
   }
 
   buy(id: string): boolean {
     if (!this.canBuy(id)) return false;
-    this.currency.set(this.currency.get().sub(this.get(id).cost));
+    this.currency.set(this.currency.get().sub(this.cost(id)));
     this.owned().push(id);
     this.get(id).onBuy?.();
     emit("upgrade", id);
