@@ -2,7 +2,8 @@ import { D, Decimal } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { HORIZON, collapseEngineMult, shardUpgrades } from "./collapse";
 import { addFlux } from "./flux";
-import { fluxThrottle, surgeMult, throttlesAllEngines } from "./heat";
+import { fluxThrottle, isSurging, surgeMult, throttlesAllEngines } from "./heat";
+import { SURGE_ENGINE_IDLE, inTrial, purchaseHeat } from "./trials";
 import { overdriveMult } from "./overdrive";
 import { riftEngineMult } from "./rift";
 import { buyMaxTempo, tempoMult } from "./tempo";
@@ -50,6 +51,7 @@ export function buyEngine(tier: number): boolean {
   state.flux = state.flux.sub(engineCost(tier));
   engine.amount = engine.amount.add(1);
   engine.bought++;
+  purchaseHeat(1);
   return true;
 }
 
@@ -70,6 +72,7 @@ export function buyToNextMilestone(tier: number): boolean {
   state.flux = state.flux.sub(costToNextMilestone(tier)).max(0);
   engine.amount = engine.amount.add(count);
   engine.bought += count;
+  purchaseHeat(count);
   return true;
 }
 
@@ -85,6 +88,7 @@ export function buyMaxEngine(tier: number): number {
   state.flux = state.flux.sub(cost).max(0);
   engine.amount = engine.amount.add(count);
   engine.bought += count;
+  purchaseHeat(count);
   return count;
 }
 
@@ -102,6 +106,7 @@ export function engineMult(tier: number): Decimal {
   let mult = D(MILESTONE_MULT).pow(Math.floor(engine.bought / MILESTONE_SIZE));
   mult = mult.mul(overdriveMult()).mul(collapseEngineMult()).mul(riftEngineMult()).mul(surgeMult());
   if (tier === 0 || throttlesAllEngines()) mult = mult.mul(fluxThrottle());
+  if (inTrial("surge") && !isSurging()) mult = mult.mul(SURGE_ENGINE_IDLE);
   if (shardUpgrades.has("cascade") && tier < ENGINE_COUNT - 1) {
     mult = mult.mul(1 + state.engines[tier + 1].bought * 0.02);
   }

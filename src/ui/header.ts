@@ -30,6 +30,8 @@ export function headerView(): View {
   );
 
   const horizonLog = HORIZON.log10().toNumber();
+  let barPeak = state.flux;
+  let lastSinceReset = state.sinceReset;
 
   return {
     root,
@@ -41,8 +43,14 @@ export function headerView(): View {
       const drag = horizonDrag();
       setText(rate, `+${format(fluxPerSecond(), 2, 1)} / sec` + (drag.lt(1) ? ` · slowed ÷${format(drag.recip(), 2, 1)}` : ""));
 
-      // Peak, not current: spending or an Overdrive shouldn't make the bar fall back.
-      const pct = Math.min(100, Math.max(0, (state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog) * 100));
+      // Most Flux since the last Overdrive/Lattice (or Collapse): spending doesn't make the bar
+      // fall back, but each reset starts it over, so you see this stretch's progress. Once the
+      // Horizon has been reached this Collapse it stays full.
+      if (state.sinceReset < lastSinceReset) barPeak = state.flux;
+      lastSinceReset = state.sinceReset;
+      if (state.flux.gt(barPeak)) barPeak = state.flux;
+      const shown = canCollapse() ? HORIZON : barPeak;
+      const pct = Math.min(100, Math.max(0, (shown.max(1).log10().toNumber() / horizonLog) * 100));
       fill.style.width = `${pct}%`;
       const trial = activeTrial();
       const sprintLeft = trial === "sprint" && pct < 100 ? ` (${Math.max(0, SPRINT_LIMIT - state.collapse.time).toFixed(0)}s)` : "";

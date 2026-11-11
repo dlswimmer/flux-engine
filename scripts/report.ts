@@ -18,15 +18,17 @@ import {
   shardGain,
   shardUpgrades,
 } from "../src/game/collapse";
-import { maxAll } from "../src/game/engines";
-import { isHeatUnlocked, vent } from "../src/game/heat";
+import { buyEngine, maxAll } from "../src/game/engines";
+import { buyTempo } from "../src/game/tempo";
+import { ENGINE_COUNT } from "../src/core/state";
+import { isHeatUnlocked, isSurging, vent } from "../src/game/heat";
 import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
 import { canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
 import { simulate } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
-import { BREACH_TRIALS, TRIALS, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
+import { BREACH_TRIALS, TRIALS, VALVE_HEAT_PER_BUY, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
 
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
@@ -149,8 +151,7 @@ export function playthrough(
           const r = retryAt[id];
           return !r || state.rift.count >= r.rift || state.collapse.upgrades.length >= r.upgrades;
         };
-        // Fixed Tempo needs fast resets: a player who has tried it waits for the Overdrive autobuyer.
-        const strongEnough = (id: TrialId) => id !== "fixed" || shardUpgrades.has("automators2");
+        const strongEnough = (_id: TrialId) => true;
         const next = TRIALS.find(
           (d) => wanted(d) && !hasTrialReward(d.id) && isTrialAvailable(d.id) && ready(d.id) && strongEnough(d.id),
         );
@@ -204,16 +205,42 @@ export function playthrough(
     a.collapseShards = 0;
     a.overdrive = shardUpgrades.has("automators2");
     a.lattice = shardUpgrades.has("autolattice");
+    const trial = activeTrial();
+    // Surge Engine: a reset ends the Surge, so resets wait for the gap between Surges.
+    const holdResets = trial === "surge" && isSurging();
+    if (holdResets) a.overdrive = a.lattice = false;
+    // Pressure Valve: autobuyers would melt the run down, so buy by hand up to a Heat budget.
+    const valve = trial === "valve";
+    a.tempo = !valve;
+    a.engines = a.engines.map(() => !valve);
     // By hand, whatever isn't automated yet (the Lattice autobuyer goes first, so an Overdrive
     // by hand would only be reset by it).
-    if (!a.lattice && state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
+    if (holdResets) {
+      /* wait for the Surge to end */
+    } else if (!a.lattice && state.lattices < latMax && canLattice()) doLattice(latMax - state.lattices);
     else if (!a.overdrive && state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
-    maxAll();
+    if (valve) valveBuy();
+    else maxAll();
   }
   void since;
   ms["(end)"] = t;
   ms["(played)"] = t - awayTime;
   return ms;
+}
+
+/** Pressure Valve: vent when it's allowed and hot, then buy (Tempo, then high tiers first) up to a Heat budget. */
+const VALVE_BUDGET = Number(process.env.VALVEBUDGET ?? 95);
+function valveBuy() {
+  if (!isSurging() && state.heat.amount >= Number(process.env.VALVEVENT ?? 60)) vent();
+  for (let bought = true; bought; ) {
+    bought = false;
+    if (state.heat.amount + VALVE_HEAT_PER_BUY >= VALVE_BUDGET) return;
+    if (buyTempo()) bought = true;
+    for (let tier = ENGINE_COUNT - 1; tier >= 0; tier--) {
+      if (state.heat.amount + VALVE_HEAT_PER_BUY >= VALVE_BUDGET) return;
+      if (buyEngine(tier)) bought = true;
+    }
+  }
 }
 
 const BASE: Player = {
@@ -416,15 +443,23 @@ function oneRun(save: string, trial: TrialId | null, limit = TRIAL_GIVE_UP): num
     tick(DT);
     t += DT;
     if (state.collapse.count > start) return t;
-    if (isHeatUnlocked() && state.heat.amount >= 75) vent();
+    if (trial !== "valve" && isHeatUnlocked() && state.heat.amount >= 75) vent();
     if (++step % 10) continue;
     if (canCollapse() && !(isBreached() && shardUpgrades.has("selfcollapse"))) {
       doCollapse();
       return t;
     }
-    if (!a.lattice && state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
+    const holdResets = trial === "surge" && isSurging();
+    a.overdrive = shardUpgrades.has("automators2") && !holdResets;
+    a.lattice = shardUpgrades.has("autolattice") && !holdResets;
+    a.tempo = trial !== "valve";
+    a.engines = a.engines.map(() => trial !== "valve");
+    if (holdResets) {
+      /* wait for the Surge to end */
+    } else if (!a.lattice && state.lattices < 1 && canLattice()) doLattice(1 - state.lattices);
     else if (!a.overdrive && state.overdrives < 8 && canOverdrive()) doOverdrive(8 - state.overdrives);
-    maxAll();
+    if (trial === "valve") valveBuy();
+    else maxAll();
   }
   return Infinity;
 }

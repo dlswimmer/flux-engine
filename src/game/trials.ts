@@ -10,7 +10,7 @@ import { resetForCollapse } from "./reset";
 // the Rift: they fix things that get slow late, mainly the Overdrive/Lattice reset staircase.
 // Tuned with `npm run report -- trials`.
 
-export type TrialId = "overload" | "rigid" | "cold" | "fixed" | "sprint" | "hollow";
+export type TrialId = "overload" | "rigid" | "cold" | "valve" | "sprint" | "surge";
 
 export interface TrialDef {
   id: TrialId;
@@ -22,21 +22,27 @@ export interface TrialDef {
 }
 
 /*
- * Tuned with `npm run report -- trials` as an escalating set (1s bot, each Trial with the earlier
- * ones won): Rigid ~10 min, Overload ~12, Cold ~17, Fixed ~15 before the first Rift; Sprint and
- * Hollow Core out of reach until after Rift 2 (then ~3-6 and ~18 min).
+ * Tuned with `npm run report -- trials` (1s bot, each Trial with the earlier ones won), at the
+ * Foreman point: Rigid ~25 min, Overload ~12, Cold ~26, Pressure Valve ~17, Surge Engine ~18;
+ * Sprint out of reach until after Rift 2. Pressure Valve and Surge Engine (2026-11-11) replaced
+ * Fixed Tempo and Hollow Core, which only made you wait: these two make you play differently.
  */
 
 /** Seconds Sprint allows to reach the Horizon before the run restarts. */
 export const SPRINT_LIMIT = 180;
-/** Fixed Tempo: the most Tempo levels you can buy (150: never by Rift 3; 185: ~7 min). */
-export const FIXED_TEMPO_CAP = 170;
 /**
- * Hollow Core: what each Overdrive multiplies by instead of ×2. At ×1 the Trial took ~40 min
- * after Rift 2 and the 20-min-give-up bot never won it by Rift 5; ×1.15 is ~18 min after Rift 2
- * and ~33 before it; ×1.2 was already won after Rift 1. (Its old Tempo cap of 300 never bound.)
+ * Pressure Valve: Heat comes from buying, not time. Each Engine or Tempo level bought adds this
+ * much, and 100 melts the run down. Autobuyers left on will melt you, so you buy in batches,
+ * vent before the top, and spend Heat on the tiers worth it.
  */
-export const HOLLOW_OVERDRIVE_FACTOR = 1.15;
+export const VALVE_HEAT_PER_BUY = 0.5;
+/**
+ * Surge Engine: outside a Surge, Engines run at this fraction. Surges last half as long, and an
+ * Overdrive or Lattice ends the Surge, so reset autobuyers left on throw your Surges away.
+ */
+// Barely moves the time (10% / 3% / 0% all ~13-14 min after Rift 2): Surges carry the run.
+export const SURGE_ENGINE_IDLE = 0.05;
+export const SURGE_ENGINE_DURATION = 0.5;
 /** Cold Running: overheating slows every Engine, down to this. */
 export const COLD_THROTTLE_FLOOR = 0.6;
 /** Overload: the most Overdrives allowed. Rigid Frame: the most Lattices. */
@@ -79,9 +85,9 @@ export const TRIALS: TrialDef[] = [
     reward: "Surges last 50% longer.",
   },
   {
-    id: "fixed",
-    name: "Fixed Tempo",
-    rule: `Tempo stops at level ${FIXED_TEMPO_CAP}.`,
+    id: "valve",
+    name: "Pressure Valve",
+    rule: `Heat doesn't build over time: every Engine or Tempo level you buy adds ${VALVE_HEAT_PER_BUY} Heat. At 100 Heat the run melts down and starts over.`,
     reward: "Tempo costs ×7 per level instead of ×8.",
   },
   {
@@ -91,11 +97,12 @@ export const TRIALS: TrialDef[] = [
     reward: `Autobuyers start every Rift as if you had ${SPRINT_HEAD_START} Collapses.`,
   },
   {
-    id: "hollow",
-    name: "Hollow Core",
-    rule: `Overdrives multiply by only ×${HOLLOW_OVERDRIVE_FACTOR} (they still unlock Engines).`,
+    id: "surge",
+    name: "Surge Engine",
+    rule: `Outside a Surge, Engines run at ${Math.round(SURGE_ENGINE_IDLE * 100)}%. Surges last half as long, and an Overdrive or Lattice ends the Surge.`,
     reward: `Your first ${FREE_LATTICES} Lattices each Collapse reset nothing.`,
-    requires: ["overload", "rigid"],
+    // Not much slower than the others (~20 min at Collapse 15), but its reward is strong: keep it after the Breach set.
+    requires: ["rigid", "overload", "cold", "valve"],
   },
 ];
 
@@ -103,7 +110,7 @@ export const TRIALS: TrialDef[] = [
 export const TRIAL_KEEPS = AUTOMATION_UPGRADES;
 
 /** Trials you must win before Breach can be bought (like AD's challenges before Break Infinity). */
-export const BREACH_TRIALS: TrialId[] = ["rigid", "overload", "cold", "fixed"];
+export const BREACH_TRIALS: TrialId[] = ["rigid", "overload", "cold", "valve"];
 
 /** Lifetime Collapses that open the Trials. */
 export const TRIALS_UNLOCK = 60;
@@ -150,8 +157,20 @@ export function completeActiveTrial() {
   emit("trial", id);
 }
 
-/** Every tick: Sprint restarts the run once its time is up. */
+/** Pressure Valve: Heat from buying `count` Engines or Tempo levels. */
+export function purchaseHeat(count: number) {
+  if (count > 0 && inTrial("valve")) state.heat.amount += count * VALVE_HEAT_PER_BUY;
+}
+
+/** Every tick: Sprint restarts the run once its time is up; Pressure Valve melts down at 100 Heat. */
 export function updateTrials() {
+  if (inTrial("valve") && state.heat.amount >= 100) {
+    resetForCollapse();
+    state.heat.amount = 0;
+    state.heat.surgeTime = 0;
+    state.trials.meltdowns++;
+    emit("meltdown");
+  }
   if (inTrial("sprint") && !canCollapse() && state.collapse.time >= SPRINT_LIMIT) {
     resetForCollapse();
     state.trials.sprintRestarts++;

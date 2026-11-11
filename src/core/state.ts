@@ -6,7 +6,7 @@ export const ENGINE_COUNT = 8;
  * Bump this whenever the save shape changes in a way merge-with-defaults can't
  * handle on its own, and add a matching entry to MIGRATIONS in save.ts.
  */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 /** One finished Collapse, for the recent-runs table on the Stats tab. */
 export interface CollapseRecord {
@@ -126,6 +126,8 @@ export interface GameState {
     /** Fastest win per Trial, in seconds. */
     best: Record<string, number>;
     sprintRestarts: number;
+    /** Pressure Valve runs that hit 100 Heat. */
+    meltdowns: number;
     introduced: boolean;
   };
 
@@ -199,7 +201,7 @@ export function defaultState(): GameState {
       collapseShards: 0,
     },
 
-    trials: { active: null, completed: [], best: {}, sprintRestarts: 0, introduced: false },
+    trials: { active: null, completed: [], best: {}, sprintRestarts: 0, meltdowns: 0, introduced: false },
 
     stats: { timePlayed: 0, totalFlux: D(0), bestFlux: D(0), collapses: 0, shardsEarned: D(0), overdrives: 0, lattices: 0 },
     options: { autosave: true, offlineProgress: true, devSpeed: 1 },
