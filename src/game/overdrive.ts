@@ -3,7 +3,7 @@ import { D } from "../lib/decimal";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForOverdrive } from "./reset";
-import { FREE_OVERDRIVES_UP_TO, HOLLOW_OVERDRIVE_FACTOR, OVERLOAD_MAX_OVERDRIVES, hasTrialReward, inTrial } from "./trials";
+import { FREE_OVERDRIVES_UP_TO, OVERLOAD_MAX_OVERDRIVES, hasTrialReward, inTrial } from "./trials";
 
 export const UNLOCK_PHASE = 4; // the first 4 Overdrives unlock Engines V–VIII
 const UNLOCK_REQUIREMENT = 10;
@@ -61,6 +61,4 @@ export function doOverdrive(limit = Infinity): boolean {
 }
 
 export const overdriveFactor = () => (shardUpgrades.has("resonance") ? 2.25 : 2);
-/** Hollow Core (Trial): Overdrives still unlock Engines but multiply by much less. */
-export const overdriveMult = () =>
-  D(inTrial("hollow") ? HOLLOW_OVERDRIVE_FACTOR : overdriveFactor()).pow(state.overdrives);
+export const overdriveMult = () => D(overdriveFactor()).pow(state.overdrives);

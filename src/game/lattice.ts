@@ -44,7 +44,7 @@ export const nextLatticeRequirement = () => requirementAt(state.lattices + latti
 export const canLattice = () => latticesAvailable(1) > 0;
 
 /** Hollow Core (Trial reward): a Lattice costs no reset. */
-export const latticeResetsNothing = () => hasTrialReward("hollow") && state.lattices < FREE_LATTICES;
+export const latticeResetsNothing = () => hasTrialReward("surge") && state.lattices < FREE_LATTICES;
 
 /** Claims every Lattice your Engine VIII covers (up to `limit`), with one reset. */
 export function doLattice(limit = Infinity): boolean {

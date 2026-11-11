@@ -2,13 +2,13 @@ import { D, Decimal } from "../lib/decimal";
 import { state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { latticeTempoBonus } from "./lattice";
-import { FIXED_TEMPO_CAP, hasTrialReward, inTrial } from "./trials";
+import { hasTrialReward, purchaseHeat } from "./trials";
 
 const BASE_COST = 1e3;
 const COST_GROWTH = 8;
-/** Fixed Tempo (Trial reward). Past the Horizon the ×4096 scaling still applies. */
+/** Pressure Valve (Trial reward). Past the Horizon the ×4096 scaling still applies. */
 const REWARD_COST_GROWTH = 7;
-const costGrowth = () => (hasTrialReward("fixed") ? REWARD_COST_GROWTH : COST_GROWTH);
+const costGrowth = () => (hasTrialReward("valve") ? REWARD_COST_GROWTH : COST_GROWTH);
 const BASE_FACTOR = 1.1;
 
 /**
@@ -41,7 +41,7 @@ export const tempoCost = () =>
     : SCALED_BASE.mul(D(SCALED_COST_GROWTH).pow(state.tempo - SCALING_START));
 
 /** Fixed Tempo (Trial) caps the level. */
-const tempoCap = () => (inTrial("fixed") ? FIXED_TEMPO_CAP : Infinity);
+const tempoCap = () => Infinity;
 
 export const canBuyTempo = () => isTempoUnlocked() && state.tempo < tempoCap() && state.flux.gte(tempoCost());
 
@@ -49,6 +49,7 @@ export function buyTempo(): boolean {
   if (!canBuyTempo()) return false;
   state.flux = state.flux.sub(tempoCost());
   state.tempo++;
+  purchaseHeat(1);
   return true;
 }
 
@@ -59,6 +60,7 @@ function buySegment(base: Decimal, growth: number, offset: number, limit: number
   if (!(count > 0) || !Number.isFinite(count)) return 0;
   state.flux = state.flux.sub(Decimal.sumGeometricSeries(count, base, growth, offset)).max(0);
   state.tempo += count;
+  purchaseHeat(count);
   return count;
 }
 

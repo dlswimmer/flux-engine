@@ -81,6 +81,7 @@ export function mountUI(root: HTMLElement) {
 
   // Trial wins: the Trial is already over by the time this runs, so find the newest win.
   let wins = state.trials.completed.length;
+  on("meltdown", () => notify("Meltdown: Heat hit 100 and the run started over. Vent before you buy more.", 5000));
   on("trial", () => {
     const won = state.trials.completed.length > wins;
     wins = state.trials.completed.length;

@@ -3,12 +3,14 @@ import { defaultEngines, state } from "../core/state";
 import { isBreached, shardUpgrades } from "./collapse";
 import { resetHeat } from "./heat";
 import { hasNode, keptShardUpgrades } from "./rift";
-import { hasTrialReward } from "./trials";
+import { hasTrialReward, inTrial } from "./trials";
 
 // Each reset wipes everything below its own layer, then keeps what upgrades say to keep.
 // New prestige layers add a resetForX that calls the one below it.
 
 function resetEngineFloor() {
+  // Surge Engine (Trial): an Overdrive or Lattice ends the Surge.
+  if (inTrial("surge")) state.heat.surgeTime = 0;
   state.flux = D(10);
   state.sinceReset = 0;
   state.engines = defaultEngines();

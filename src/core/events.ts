@@ -11,6 +11,7 @@ export type GameEvent =
   | "trial"
   | "trialStart"
   | "trialAbandon"
+  | "meltdown"
   | "upgrade"
   | "overcharge";
 

@@ -2,7 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades, totalCollapses } from "./collapse";
 import { hasNode } from "./rift";
-import { COLD_THROTTLE_FLOOR, hasTrialReward, inTrial } from "./trials";
+import { COLD_THROTTLE_FLOOR, SURGE_ENGINE_DURATION, hasTrialReward, inTrial } from "./trials";
 
 // Heat: running Engines push Heat toward HEAT_MAX. Past THROTTLE_START it gently
 // throttles Flux output (Engine I only, floor ×0.8) so idle play stays viable. The
@@ -31,7 +31,8 @@ export function updateHeat(dt: number) {
   const heat = state.heat;
   // A Surge is the vent still open: no Heat builds until it closes. Only the part of
   // this tick after the Surge ends counts (matters for big offline-catch-up ticks).
-  const heatingTime = Math.max(0, dt - heat.surgeTime);
+  // Pressure Valve (Trial): Heat comes only from buying.
+  const heatingTime = inTrial("valve") ? 0 : Math.max(0, dt - heat.surgeTime);
   heat.surgeTime = Math.max(0, heat.surgeTime - dt);
   const rate =
     (activeTiers() / ENGINE_COUNT / FILL_TIME) * (hasNode("chain-reaction") ? 2 : 1) * (inTrial("cold") ? COLD_HEAT_SPEED : 1);
@@ -61,7 +62,8 @@ export const surgeDuration = () =>
   SURGE_DURATION *
   (shardUpgrades.has("exchanger") ? 1.5 : 1) *
   (hasNode("chain-reaction") ? 2 : 1) *
-  (hasTrialReward("cold") ? 1.5 : 1);
+  (hasTrialReward("cold") ? 1.5 : 1) *
+  (inTrial("surge") ? SURGE_ENGINE_DURATION : 1);
 export const isSurging = () => state.heat.surgeTime > 0;
 export const surgeMult = () => (isSurging() ? state.heat.surgeMult : 1);
 
@@ -83,7 +85,8 @@ export function heatShardMult(): number {
  */
 export function displayedHeat(): number {
   const heat = state.heat;
-  if (!isSurging()) return heat.amount;
+  // Pressure Valve: buying adds Heat mid-Surge, and that's the number that melts you down.
+  if (!isSurging() || inTrial("valve")) return heat.amount;
   return heat.ventedFrom * Math.min(1, heat.surgeTime / surgeDuration());
 }
 

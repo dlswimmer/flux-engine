@@ -22,6 +22,15 @@ const MIGRATIONS: Record<number, (raw: any) => void> = {
     }
     if (ups.includes("automators2")) add(["autolattice"]);
   },
+  // Fixed Tempo became Pressure Valve and Hollow Core became Surge Engine (same rewards).
+  3: (raw) => {
+    const t = raw?.trials;
+    if (!t) return;
+    const rename: Record<string, string> = { fixed: "valve", hollow: "surge" };
+    if (Array.isArray(t.completed)) t.completed = t.completed.map((id: string) => rename[id] ?? id);
+    if (t.best) for (const [from, to] of Object.entries(rename)) if (from in t.best) { t.best[to] = t.best[from]; delete t.best[from]; }
+    if (t.active in rename) t.active = rename[t.active];
+  },
 };
 
 export function serialize(s: GameState): string {
@@ -78,6 +87,9 @@ function mergeWithDefaults<T>(base: T, incoming: unknown): T {
     for (const key of Object.keys(base as object)) {
       out[key] = mergeWithDefaults((base as any)[key], (incoming as any)[key]);
     }
+    // Records that start empty (Trial best times) keep their saved entries: before this, every
+    // load dropped them.
+    if (Object.keys(base as object).length === 0) Object.assign(out, incoming);
     return out;
   }
   return (typeof incoming === typeof base ? incoming : base) as T;
