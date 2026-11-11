@@ -71,6 +71,10 @@ export function devResetRift() {
   state.rift.nodes = [];
   state.rift.respec = false;
   state.rift.introduced = false;
+  state.rift.attunement = 0;
+  state.rift.history = [];
+  // Overcharge is a Rift-layer currency sink too: start the layer from Overcharge 0.
+  state.collapse.overcharge = 0;
   // Head Start's Overdrives no longer apply.
   resetForCollapse();
 }
