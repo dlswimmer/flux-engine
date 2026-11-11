@@ -13,6 +13,7 @@ import {
   canRift,
   chosenBranch,
   doRift,
+  essenceAt,
   essenceGain,
   hasNode,
   hasRiftMilestone,
@@ -159,7 +160,7 @@ export function riftTab(): View {
       fill.style.width = `${Math.min(100, (oc / RIFT_OVERCHARGE) * 100)}%`;
       setText(
         progressLabel,
-        canRift() ? `Open · each 4 more Overcharge: +3 Essence` + (r.attunement ? ` (×${attunementEssenceMult().toFixed(2)})` : "") : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
+        canRift() ? `Open · Overcharge ${oc + 1} gives ${formatInt(essenceAt(oc + 1))} Essence, ${oc + 4} gives ${formatInt(essenceAt(oc + 4))}` : `Overcharge ${oc} of ${RIFT_OVERCHARGE}`,
       );
       setText(
         button,

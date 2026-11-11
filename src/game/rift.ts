@@ -24,6 +24,14 @@ export const RIFT_OVERCHARGE = 24;
  * after Breach, most of the Rift tree in one Rift. Same 4 Essence at Overcharge 28 as before.
  */
 const ESSENCE_PER_LEVEL = 0.75;
+/**
+ * Essence curve past the requirement: 4 at Overcharge 28 (as before), ×1.3 per level after, so
+ * waiting for a bigger Rift pays (David, 2026-11-11: with linear Essence the best play was
+ * Rifting at 4 every 1-2 minutes). Sim, 8h after Breach: ×1.25 / 1.32 / 1.4 finish the tree
+ * 6h26m / 5h15m / 4h40m after Breach Rifting at 20; Rifting at 4 is unchanged. Mutable so
+ * `npm run report -- styles` can compare curves (ESSENCE_GROWTH=1.25). growth 0 = linear.
+ */
+export const ESSENCE_CURVE = { growth: 1.3 };
 
 // ---------- New-node numbers ----------
 
@@ -39,8 +47,16 @@ export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
 
 export function essenceGain(): Decimal {
   if (!canRift()) return D(0);
-  const over = state.collapse.overcharge - RIFT_OVERCHARGE;
-  return D(Math.floor((1 + over * ESSENCE_PER_LEVEL) * attunementEssenceMult()));
+  return essenceAt(state.collapse.overcharge);
+}
+
+/** Essence a Rift at this Overcharge level would give. */
+export function essenceAt(overcharge: number): Decimal {
+  const over = overcharge - RIFT_OVERCHARGE;
+  const base = ESSENCE_CURVE.growth
+    ? Math.max(1, 4 * ESSENCE_CURVE.growth ** (over - 4))
+    : 1 + over * ESSENCE_PER_LEVEL;
+  return D(Math.floor(base * attunementEssenceMult()));
 }
 
 export function doRift(): boolean {
