@@ -18,8 +18,12 @@ import { UpgradeSet } from "./upgrades";
 
 /** Overcharge level needed to Rift. Tuned with `npm run sim -- rift`. */
 export const RIFT_OVERCHARGE = 24;
-/** Every this many Overcharge levels past the requirement doubles Essence. */
-const LEVELS_PER_DOUBLING = 2;
+/**
+ * Essence per Overcharge level past the requirement. Linear: it used to double every 2 levels,
+ * and a player who let the reset autobuyers run uncapped had ~45 Essence on offer 6 minutes
+ * after Breach, most of the Rift tree in one Rift. Same 4 Essence at Overcharge 28 as before.
+ */
+const ESSENCE_PER_LEVEL = 0.75;
 
 export const isRiftUnlocked = () => isBreached() || state.rift.count > 0;
 export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
@@ -27,7 +31,7 @@ export const canRift = () => state.collapse.overcharge >= RIFT_OVERCHARGE;
 export function essenceGain(): Decimal {
   if (!canRift()) return D(0);
   const over = state.collapse.overcharge - RIFT_OVERCHARGE;
-  return D(2).pow(over / LEVELS_PER_DOUBLING).floor().max(1);
+  return D(Math.floor(1 + over * ESSENCE_PER_LEVEL));
 }
 
 export function doRift(): boolean {
