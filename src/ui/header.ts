@@ -1,6 +1,6 @@
 import { format, formatCount, formatInt } from "../core/format";
 import { state } from "../core/state";
-import { HORIZON, canCollapse, doCollapse, isCollapseUnlocked, shardGain } from "../game/collapse";
+import { HORIZON, canCollapse, doCollapse, isBreached, isCollapseUnlocked, shardGain } from "../game/collapse";
 import { fluxPerSecond, horizonDrag } from "../game/engines";
 import { h, setClass, setText, setVisible, type View } from "./dom";
 import { SPRINT_LIMIT, activeTrial, trialDef } from "../game/trials";
@@ -51,12 +51,24 @@ export function headerView(): View {
       if (state.flux.gt(barPeak)) barPeak = state.flux;
       const shown = canCollapse() ? HORIZON : barPeak;
       const pct = Math.min(100, Math.max(0, (shown.max(1).log10().toNumber() / horizonLog) * 100));
-      fill.style.width = `${pct}%`;
+      // Past the Horizon after Breach, Shards ×10 every 200 orders of magnitude of Flux (see
+      // exactShardGain): the bar shows progress to the next ×10, from this Collapse's peak.
+      const pastHorizon = pct >= 100 && isBreached();
+      let label = pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`;
+      let width = pct;
+      if (pastHorizon) {
+        const decades = state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog - 0.75;
+        const next = Math.floor(decades) + 1;
+        width = (decades - Math.floor(decades)) * 100;
+        label = `${width.toFixed(1)}% to Shards ×10 (e${formatInt((next + 0.75) * horizonLog)} Flux)`;
+      }
+      setClass(fill, "past-horizon", pastHorizon);
+      fill.style.width = `${width}%`;
       const trial = activeTrial();
       const sprintLeft = trial === "sprint" && pct < 100 ? ` (${Math.max(0, SPRINT_LIMIT - state.collapse.time).toFixed(0)}s)` : "";
       setText(
         progressLabel,
-        (pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`) +
+        label +
           (trial ? ` · Trial: ${trialDef(trial).name}${sprintLeft}` : ""),
       );
       setClass(root, "in-trial", trial !== null);
