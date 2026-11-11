@@ -79,7 +79,7 @@ Hotkeys: **R** Rift · **M** max all · **B** buy mode (1 / until ×2) · **T** 
 
   | Trial | Rule | Reward | Time (1s bot) |
   | --- | --- | --- | --- |
-  | Rigid Frame | at most 1 Lattice (0 was impossible even after Rift 3) | Lattices keep all Overdrives | ~10 min |
+  | Rigid Frame | at most 1 Lattice, needing 2× the Engine VIII (0 was impossible even after Rift 3; 1 at normal cost was how players ran anyway, 2026-11-11) | Lattices keep all Overdrives | ~25 min (1s bot: won 3h07m, Breach 4h21m) |
   | Overload | at most 6 Overdrives | Overdrives 5-10 reset nothing | ~12 min |
   | Cold Running | Heat 3× faster, no venting, overheating slows every Engine to ×0.6 | Surges 50% longer | ~17 min |
   | Fixed Tempo | Tempo stops at 170 (150 never; 185 ~7 min) | Tempo ×7/level instead of ×8 (×4096 past the Horizon unchanged) | ~15 min (43 min before Foreman) |

@@ -43,6 +43,8 @@ export const COLD_THROTTLE_FLOOR = 0.6;
 export const OVERLOAD_MAX_OVERDRIVES = 6;
 /** 0 (no Lattices) was impossible even after Rift 3. */
 export const RIGID_MAX_LATTICES: number = 1;
+/** Rigid Frame: Lattices need this many times the Engine VIII (sim: ~15 min longer, Breach ~4h20m). */
+export const RIGID_LATTICE_COST = 2;
 /**
  * Overload / Hollow Core rewards cover the Overdrives and Lattices a well-played run reaches
  * anyway: they remove the reset time, not the ceiling. Unlimited free claims took Flux depth past
@@ -61,7 +63,7 @@ export const TRIALS: TrialDef[] = [
     rule:
       RIGID_MAX_LATTICES === 0
         ? "No Lattices."
-        : `No more than ${RIGID_MAX_LATTICES} Lattice${RIGID_MAX_LATTICES === 1 ? "" : "s"}.`,
+        : `No more than ${RIGID_MAX_LATTICES} Lattice${RIGID_MAX_LATTICES === 1 ? "" : "s"}, and ${RIGID_LATTICE_COST}× the Engine VIII to claim it.`,
     reward: "Lattices keep all your Overdrives.",
   },
   {
