@@ -1,4 +1,5 @@
 import { format, formatCount, formatInt } from "../core/format";
+import { D } from "../lib/decimal";
 import { state } from "../core/state";
 import { HORIZON, canCollapse, doCollapse, isBreached, isCollapseUnlocked, shardGain } from "../game/collapse";
 import { fluxPerSecond, horizonDrag } from "../game/engines";
@@ -32,6 +33,8 @@ export function headerView(): View {
   const horizonLog = HORIZON.log10().toNumber();
   let barPeak = state.flux;
   let lastSinceReset = state.sinceReset;
+  let targetKey = "";
+  let target = D(0);
 
   return {
     root,
@@ -52,15 +55,23 @@ export function headerView(): View {
       const shown = canCollapse() ? HORIZON : barPeak;
       const pct = Math.min(100, Math.max(0, (shown.max(1).log10().toNumber() / horizonLog) * 100));
       // Past the Horizon after Breach, Shards ×10 every 200 orders of magnitude of Flux (see
-      // exactShardGain): the bar shows progress to the next ×10, from this Collapse's peak.
+      // exactShardGain). The bar counts Shards in steps of ×10 from what the Horizon gives
+      // (2 → 20 → 200...), from this Collapse's peak (David).
       const pastHorizon = pct >= 100 && isBreached();
       let label = pct >= 100 ? "Horizon reached" : `${pct.toFixed(2)}% to the Horizon`;
       let width = pct;
       if (pastHorizon) {
-        const decades = state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog - 0.75;
-        const next = Math.floor(decades) + 1;
-        width = (decades - Math.floor(decades)) * 100;
-        label = `${width.toFixed(1)}% to Shards ×10 (e${formatInt((next + 0.75) * horizonLog)} Flux)`;
+        const steps = state.collapse.peakFlux.max(1).log10().toNumber() / horizonLog - 1;
+        const frac = steps - Math.floor(steps);
+        const gain = shardGain();
+        // Fixed once per step, so Heat and Surges moving the gain don't make the goal wobble.
+        const key = `${state.rift.count}:${state.collapse.count}:${Math.floor(steps)}`;
+        if (key !== targetKey) {
+          targetKey = key;
+          target = gain.mul(Math.pow(10, 1 - frac)).round().max(gain.add(1));
+        }
+        width = frac * 100;
+        label = `${formatInt(gain)} of ${formatInt(target)} Shards`;
       }
       setClass(fill, "past-horizon", pastHorizon);
       fill.style.width = `${width}%`;
