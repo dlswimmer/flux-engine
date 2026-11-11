@@ -2,7 +2,7 @@ import { emit } from "../core/events";
 import { ENGINE_COUNT, state } from "../core/state";
 import { shardUpgrades } from "./collapse";
 import { resetForLattice } from "./reset";
-import { FREE_LATTICES, RIGID_MAX_LATTICES, hasTrialReward, inTrial } from "./trials";
+import { FREE_LATTICES, RIGID_LATTICE_COST, RIGID_MAX_LATTICES, hasTrialReward, inTrial } from "./trials";
 
 const BASE_REQUIREMENT = 40;
 const REQUIREMENT_STEP = 20;
@@ -18,6 +18,8 @@ const TEMPO_BONUS_PER_LATTICE = 0.04;
 function requirementAt(l: number): number {
   let req = BASE_REQUIREMENT + REQUIREMENT_STEP * l + REQUIREMENT_QUADRATIC * l * l;
   if (shardUpgrades.has("latticeworks")) req -= 15;
+  // Rigid Frame: one Lattice was how most players ran anyway; doubling its cost makes it bite.
+  if (inTrial("rigid")) req *= RIGID_LATTICE_COST;
   return req;
 }
 
