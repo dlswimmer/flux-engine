@@ -32,6 +32,8 @@ const ESSENCE_PER_LEVEL = 0.75;
  * `npm run report -- styles` can compare curves (ESSENCE_GROWTH=1.25). growth 0 = linear.
  */
 export const ESSENCE_CURVE = { growth: 1.3 };
+/** Overcharge past the requirement where Essence switches from ×1.3 a level to a cube. */
+const ESSENCE_CURVE_KNEE = 12;
 
 // ---------- New-node numbers ----------
 
@@ -53,9 +55,16 @@ export function essenceGain(): Decimal {
 /** Essence a Rift at this Overcharge level would give. */
 export function essenceAt(overcharge: number): Decimal {
   const over = overcharge - RIFT_OVERCHARGE;
-  const base = ESSENCE_CURVE.growth
+  let base = ESSENCE_CURVE.growth
     ? Math.max(1, 4 * ESSENCE_CURVE.growth ** (over - 4))
     : 1 + over * ESSENCE_PER_LEVEL;
+  // Past Overcharge 36 (~33 Essence) it grows like a cube instead (same slope where they meet).
+  // ×1.3 a level matched Overcharge Coil's ×1.3 cost, so Essence grew in step with Shards, and
+  // Shards grow with Essence (Rift Lens, Attunement): David's Rifts went 127 → 472 → 2,963 →
+  // 98,640 Essence, ~2½ minutes apart (2026-11-12). Polynomial in Overcharge is logarithmic in
+  // Shards, so that loop can't run away.
+  if (ESSENCE_CURVE.growth && over > ESSENCE_CURVE_KNEE)
+    base = 4 * ESSENCE_CURVE.growth ** (ESSENCE_CURVE_KNEE - 4) * (over / ESSENCE_CURVE_KNEE) ** 3;
   return D(Math.floor(base * attunementEssenceMult()));
 }
 
