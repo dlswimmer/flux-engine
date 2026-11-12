@@ -1,6 +1,8 @@
 import { formatTime } from "../core/format";
 import { state } from "../core/state";
 import { trialDef } from "../game/trials";
+import { isBreached } from "../game/collapse";
+import { AWAY_SHARDS, recentShardRate } from "../core/loop";
 import { BALLAST_AWAY_MULT, hasNode } from "../game/rift";
 import { h } from "./dom";
 
@@ -21,6 +23,9 @@ export function askAboutAway(seconds: number): Promise<boolean> {
         h("h3", {}, "Welcome back"),
         h("p", {}, `You were away for ${formatTime(seconds)}. The game paused while you were gone.`),
         hasNode("ballast") ? h("p", {}, `Ballast: it counts as ${formatTime(seconds * BALLAST_AWAY_MULT)}.`) : null,
+        !trial && isBreached() && recentShardRate() > 0
+          ? h("p", {}, `It pays at least ${Math.round(AWAY_SHARDS.share * 100)}% of your recent Shards per minute, spent on Overcharge.`)
+          : null,
         trial ? h("p", { class: "away-warn" }, `You're in the ${trial.name} Trial: used time counts toward it.`) : null,
         h(
           "div",

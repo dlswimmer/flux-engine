@@ -24,9 +24,9 @@ import { ENGINE_COUNT } from "../src/core/state";
 import { isHeatUnlocked, isSurging, vent } from "../src/game/heat";
 import { canLattice, doLattice } from "../src/game/lattice";
 import { canOverdrive, doOverdrive } from "../src/game/overdrive";
-import { ESSENCE_CURVE, BALLAST_AWAY_MULT, buyAttunement, canRift, doRift, essenceGain, hasNode, riftNodes } from "../src/game/rift";
+import { ESSENCE_CURVE, buyAttunement, canRift, doRift, essenceGain, riftNodes } from "../src/game/rift";
 import { tick } from "../src/game/tick";
-import { simulate } from "../src/core/loop";
+import { AWAY_SHARDS, simulate, useAwayTime } from "../src/core/loop";
 import { resetForCollapse as resetForCollapseExport } from "../src/game/reset";
 import { BREACH_TRIALS, TRIALS, VALVE_HEAT_PER_BUY, abandonTrial, activeTrial, hasTrialReward, isTrialAvailable, startTrial, type TrialId } from "../src/game/trials";
 import { totalCollapses } from "../src/game/collapse";
@@ -36,6 +36,7 @@ import { formatInt } from "../src/core/format";
 declare const process: { argv: string[]; env: Record<string, string | undefined> };
 
 const DT = 0.1;
+if (process.env.AWAY_SHARE) AWAY_SHARDS.share = Number(process.env.AWAY_SHARE);
 if (process.env.ESSENCE_GROWTH) ESSENCE_CURVE.growth = Number(process.env.ESSENCE_GROWTH);
 
 export interface Player {
@@ -131,7 +132,7 @@ export function playthrough(
       const pos = t % cycle;
       if (pos >= p.session.play - DT / 2) {
         const away = Math.max(DT, cycle - pos);
-        if (p.session.mode === "closed") simulate(away * (hasNode("ballast") ? BALLAST_AWAY_MULT : 1));
+        if (p.session.mode === "closed") useAwayTime(away);
         else for (let left = away; left > 0; left -= 60) simulate(Math.min(60, left));
         t += away;
         awayTime += away;
@@ -673,6 +674,8 @@ interface Style {
   /** Play Sprint and Surge Engine once they open (after Rift 2). */
   trials?: boolean;
   branch?: "order" | "entropy";
+  /** Plays `play` seconds, then is away `away` seconds (app closed, time used on return). */
+  session?: { play: number; away: number };
 }
 const STYLES: Style[] = [
   { name: "Auto peak, Rift at 4", every: 1, collapseAt: "peak", riftAt: 4 },
@@ -691,6 +694,8 @@ const STYLES: Style[] = [
   { name: "Auto peak, Rift at 20", every: 1, collapseAt: "peak", riftAt: 20 },
   { name: "Auto peak, Rift at 40", every: 1, collapseAt: "peak", riftAt: 40 },
   { name: "Uncapped, Rift at 20", every: 1, collapseAt: "peak", riftAt: 20, uncapped: true },
+  { name: "5 min every 30 min, Rift at 12", every: 1, collapseAt: "peak", riftAt: 12, session: { play: 300, away: 1500 } },
+  { name: "15 min every 4h, Rift at 12", every: 1, collapseAt: "peak", riftAt: 12, session: { play: 900, away: 4 * 3600 - 900 } },
 ];
 
 function playStyle(s: Style, hours: number) {
@@ -714,6 +719,11 @@ function playStyle(s: Style, hours: number) {
   let collapsesAtHour = state.stats.collapses;
   const every = Math.round(s.every / DT);
   while (t < hours * 3600) {
+    if (s.session && t % (s.session.play + s.session.away) >= s.session.play) {
+      const away = s.session.play + s.session.away - (t % (s.session.play + s.session.away));
+      useAwayTime(away);
+      t += away;
+    }
     tick(DT);
     t += DT;
     step++;
