@@ -312,12 +312,29 @@ export function exactShardGain(): Decimal {
   return gain;
 }
 
+// ---------- Shard rate (what time away pays) ----------
+// Exponentially weighted: each Collapse's Shards count fully now and fade over ~10 minutes, so
+// the rate spans several Rifts' worth of rebuilding, not just a Rift's best (deepest) runs.
+const SHARD_RATE_WINDOW = 600;
+
+/** Shards per second over roughly the last 10 minutes played. */
+export function shardRate(): number {
+  const c = state.collapse;
+  return c.shardRate * Math.exp(-Math.max(0, state.stats.timePlayed - c.shardRateAt) / SHARD_RATE_WINDOW);
+}
+
+function addToShardRate(gain: number) {
+  state.collapse.shardRate = shardRate() + gain / SHARD_RATE_WINDOW;
+  state.collapse.shardRateAt = state.stats.timePlayed;
+}
+
 export function doCollapse(): boolean {
   if (!canCollapse()) return false;
   const gain = shardGain();
   state.collapse.shards = state.collapse.shards.add(gain);
   state.stats.shardsEarned = state.stats.shardsEarned.add(gain);
   state.stats.collapses = totalCollapses() + 1;
+  addToShardRate(gain.toNumber());
   state.collapse.count++;
   state.collapse.history = [
     ...state.collapse.history,
