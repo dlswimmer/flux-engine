@@ -1,5 +1,7 @@
 import { tick } from "../game/tick";
 import { BALLAST_AWAY_MULT, hasNode } from "../game/rift";
+import { buyMaxOvercharge, isBreached } from "../game/collapse";
+import { activeTrial } from "../game/trials";
 import { logEntry } from "./playLog";
 import { state } from "./state";
 
@@ -13,6 +15,39 @@ export function simulate(seconds: number) {
   const steps = Math.min(MAX_CATCHUP_TICKS, Math.ceil(seconds / (TICK_MS / 1000)));
   const dt = seconds / steps;
   for (let i = 0; i < steps; i++) tick(dt);
+}
+
+/**
+ * After Breach, used time away pays at least this share of your recent Shards per minute. A
+ * catch-up step is ~11s for 3h away while a run lasts 1-2s, so plain simulation lost ~90% of
+ * the Collapses, and nothing bought Overcharge before Perpetual: David's 3h09m away was worth
+ * one Overcharge level (2026-11-12). Not compounding: Overcharge is bought once, at the end.
+ */
+/** Mutable so `npm run report -- styles` can compare (AWAY_SHARE=0). */
+export const AWAY_SHARDS = { share: 0.5 };
+
+/** Shards per second over this Rift's recent Collapses (0 if there are too few to judge). */
+export function recentShardRate(): number {
+  const runs = state.collapse.history.filter((r) => r.rift === state.rift.count);
+  if (runs.length < 3) return 0;
+  const time = runs.reduce((t, r) => t + r.time, 0);
+  const shards = runs.reduce((t, r) => t + r.shards.toNumber(), 0);
+  return time > 0 ? shards / time : 0;
+}
+
+/** Use `seconds` of time away: simulate it, and after Breach top Shards up to AWAY_SHARDS.share of the recent rate. */
+export function useAwayTime(seconds: number): { seconds: number; topUp: number } {
+  const used = seconds * (hasNode("ballast") ? BALLAST_AWAY_MULT : 1);
+  const credit = isBreached() && activeTrial() === null ? recentShardRate() * used * AWAY_SHARDS.share : 0;
+  const before = state.stats.shardsEarned.toNumber();
+  simulate(used);
+  const topUp = Math.max(0, credit - (state.stats.shardsEarned.toNumber() - before));
+  if (topUp > 0) {
+    state.collapse.shards = state.collapse.shards.add(topUp);
+    state.stats.shardsEarned = state.stats.shardsEarned.add(topUp);
+    buyMaxOvercharge();
+  }
+  return { seconds: used, topUp };
 }
 
 /** Asks the player whether to play out time spent away. */
@@ -40,8 +75,8 @@ function cameBack(seconds: number, ask: AskAway) {
   asking = true;
   ask(seconds).then((use) => {
     // Ballast (Rift node): used time away counts 1.5×.
-    if (use) simulate(seconds * state.options.devSpeed * (hasNode("ballast") ? BALLAST_AWAY_MULT : 1));
-    logEntry("away", { seconds: Math.round(seconds), used: use, trial: state.trials.active });
+    const result = use ? useAwayTime(seconds * state.options.devSpeed) : null;
+    logEntry("away", { seconds: Math.round(seconds), used: use, trial: state.trials.active, shardTopUp: Math.round(result?.topUp ?? 0) });
     asking = false;
     state.meta.lastTick = Date.now();
   });
