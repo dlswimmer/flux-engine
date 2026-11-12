@@ -68,6 +68,10 @@ export interface GameState {
     history: CollapseRecord[];
     /** Levels of the repeatable Overcharge Shard upgrade (after Breach). Reset by a Rift. */
     overcharge: number;
+    /** Shards per second, averaged over roughly the last 10 minutes played (time away pays a share of it). */
+    shardRate: number;
+    /** timePlayed when shardRate was last updated. */
+    shardRateAt: number;
   };
 
   // Layer 2: Rift
@@ -165,7 +169,7 @@ export function defaultState(): GameState {
     overdrives: 0,
     lattices: 0,
 
-    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), peakShards: D(0), upgrades: [], history: [], overcharge: 0 },
+    collapse: { shards: D(0), count: 0, time: 0, bestTime: Infinity, peakFlux: D(0), peakShards: D(0), upgrades: [], history: [], overcharge: 0, shardRate: 0, shardRateAt: 0 },
 
     rift: {
       essence: D(0),

@@ -1,6 +1,6 @@
 import { tick } from "../game/tick";
 import { BALLAST_AWAY_MULT, hasNode } from "../game/rift";
-import { buyMaxOvercharge, isBreached } from "../game/collapse";
+import { buyMaxOvercharge, isBreached, shardRate } from "../game/collapse";
 import { activeTrial } from "../game/trials";
 import { logEntry } from "./playLog";
 import { state } from "./state";
@@ -26,14 +26,13 @@ export function simulate(seconds: number) {
 /** Mutable so `npm run report -- styles` can compare (AWAY_SHARE=0). */
 export const AWAY_SHARDS = { share: 0.5 };
 
-/** Shards per second over this Rift's recent Collapses (0 if there are too few to judge). */
-export function recentShardRate(): number {
-  const runs = state.collapse.history.filter((r) => r.rift === state.rift.count);
-  if (runs.length < 3) return 0;
-  const time = runs.reduce((t, r) => t + r.time, 0);
-  const shards = runs.reduce((t, r) => t + r.shards.toNumber(), 0);
-  return time > 0 ? shards / time : 0;
-}
+/**
+ * Shards per second recently (see shardRate), 0 if it's too small to matter. It used to be the
+ * last 10 Collapses: the Rift's best, deepest runs, so an hour away paid ~1.5× active play
+ * (David, 2026-11-12: 54 min away → 3.9M Shards, Overcharge 28 → 41, 121 Essence, against
+ * ~84 Essence for the six Rifts he'd have played).
+ */
+export const recentShardRate = (): number => shardRate();
 
 /** Use `seconds` of time away: simulate it, and after Breach top Shards up to AWAY_SHARDS.share of the recent rate. */
 export function useAwayTime(seconds: number): { seconds: number; topUp: number } {
